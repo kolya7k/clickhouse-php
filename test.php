@@ -17,6 +17,16 @@
 		toUInt64(-1),
 		toUInt64(18446744073709551615),
 		toUInt64(9223372036854775807),
+		toInt8(1),
+		toInt8(-1),
+		toInt16(1),
+		toInt16(-1),
+		toInt32(1),
+		toInt32(-1),
+		toInt64(1),
+		toInt64(-1),
+		toUInt64(18446744073709551615),
+		toUInt64(9223372036854775807),
 		toFloat64(1 / 3),
 		toFloat32(1 / 3),
 		toFixedString('test', 8),
@@ -30,12 +40,8 @@
 	") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
 
 	while ($row = $result->fetch_assoc())
-	{
 		print_r($row);
-		var_dump($row);
-	}
 
-	echo "Total: ".$total."\n";
 	echo "Memory: ".memory_get_usage()."\n";
 
 ?>

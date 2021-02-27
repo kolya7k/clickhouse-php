@@ -45,12 +45,8 @@ $ make install
 	") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
 
 	while ($row = $result->fetch_assoc())
-	{
 		print_r($row);
-		var_dump($row);
-	}
 
-	echo "Total: ".$total."\n";
 	echo "Memory: ".memory_get_usage()."\n";
 
 ?>
