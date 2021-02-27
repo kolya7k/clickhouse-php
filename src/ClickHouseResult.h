@@ -11,7 +11,7 @@ private:
 
 	size_t next_row;
 
-	void add_type(Type::Code type_code, zval *row, const ColumnRef &column, const string &name) const;
+	void add_type(zval *row, const ColumnRef &column, const string &name) const;
 
 	template<class T>
 	void add_long(zval *row, const ColumnRef &column, const string &name) const;

@@ -28,9 +28,7 @@ bool ClickHouseResult::fetch_assoc(zval *row)
 		{
 			const string &name = block.GetColumnName(i);
 
-			Type::Code type_code = block[i]->Type()->GetCode();
-
-			this->add_type(type_code, row, block[i], name);
+			this->add_type(row, block[i], name);
 		}
 
 		this->next_row++;
@@ -45,8 +43,10 @@ bool ClickHouseResult::fetch_assoc(zval *row)
 	}
 }
 
-void ClickHouseResult::add_type(Type::Code type_code, zval *row, const ColumnRef &column, const string &name) const
+void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string &name) const
 {
+	Type::Code type_code = column->Type()->GetCode();
+
 	switch (type_code)
 	{
 //		case Type::Code::Void:
@@ -166,6 +166,6 @@ void ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string
 		return;
 	}
 
-	this->add_type(value->Nested()->Type()->GetCode(), row, value->Nested(), name);
+	this->add_type(row, value->Nested(), name);
 
 }

@@ -104,6 +104,11 @@ bool ClickHouse::is_connected() const
 
 void ClickHouse::set_error(uint32_t code, const char *message) const
 {
+#if PHP_API_VERSION >= 20200930
+	zend_update_property_long(Z_OBJCE_P(this->zend_this), Z_OBJ_P(this->zend_this), "errno", sizeof("errno") - 1, code);
+	zend_update_property_string(Z_OBJCE_P(this->zend_this), Z_OBJ_P(this->zend_this), "error", sizeof("error") - 1, message);
+#else
 	zend_update_property_long(Z_OBJCE_P(this->zend_this), this->zend_this, "errno", sizeof("errno") - 1, code);
 	zend_update_property_string(Z_OBJCE_P(this->zend_this), this->zend_this, "error", sizeof("error") - 1, message);
+#endif
 }
