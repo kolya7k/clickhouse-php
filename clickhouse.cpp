@@ -64,6 +64,14 @@ __inline static void clickhouse_result_free(zend_object *obj)
 	ch_obj->impl = nullptr;
 }
 
+__inline static void clickhouse_free(zend_object *obj)
+{
+	ClickHouseObject *ch_obj = Z_CLICKHOUSE(obj);
+
+	delete ch_obj->impl;
+	ch_obj->impl = nullptr;
+}
+
 ZEND_DECLARE_MODULE_GLOBALS(clickhouse)
 
 ZEND_MODULE_GLOBALS_CTOR_D(clickhouse)
@@ -181,20 +189,31 @@ PHP_METHOD(ClickHouseResultObject, fetch_array)
 
 	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
 
-	ClickHouseResult::FetchType type = static_cast<ClickHouseResult::FetchType>(resulttype);
-	switch (type)
-	{
-		case ClickHouseResult::FetchType::ASSOC:
-		case ClickHouseResult::FetchType::NUM:
-		case ClickHouseResult::FetchType::BOTH:
-			break;
-		default:
-			zend_error(E_WARNING, "Unknown fetch type %lu, CLICKHOUSE_ASSOC, CLICKHOUSE_NUM or CLICKHOUSE_BOTH are supported", resulttype);
-			type = ClickHouseResult::FetchType::BOTH;
-			break;
-	}
+	ClickHouseResult::FetchType type = ClickHouseResult::get_fetch_type(resulttype);
 
 	if (!obj->impl->fetch_array(return_value, type))
+		RETURN_FALSE;
+}
+
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_all, 0, 0, 0)
+	ZEND_ARG_TYPE_INFO(0, resulttype, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+PHP_METHOD(ClickHouseResultObject, fetch_all)
+{
+	zend_long resulttype = static_cast<zend_long>(ClickHouseResult::FetchType::NUM);
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(resulttype)
+	ZEND_PARSE_PARAMETERS_END();
+
+	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+
+	ClickHouseResult::FetchType type = ClickHouseResult::get_fetch_type(resulttype);
+
+	if (!obj->impl->fetch_all(return_value, type))
 		RETURN_FALSE;
 }
 
@@ -209,6 +228,7 @@ static const zend_function_entry clickhouse_result_functions[] = {
 	PHP_ME(ClickHouseResultObject, fetch_assoc, arginfo_clickhouse_result_fetch_assoc, ZEND_ACC_PUBLIC)
 	PHP_ME(ClickHouseResultObject, fetch_row, arginfo_clickhouse_result_fetch_row, ZEND_ACC_PUBLIC)
 	PHP_ME(ClickHouseResultObject, fetch_array, arginfo_clickhouse_result_fetch_array, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseResultObject, fetch_all, arginfo_clickhouse_result_fetch_all, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
@@ -222,6 +242,7 @@ PHP_MINIT_FUNCTION(clickhouse)
 
 	memcpy(&clickhouse_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
 	clickhouse_object_handlers.offset = XtOffsetOf(ClickHouseObject, std);
+	clickhouse_object_handlers.free_obj = clickhouse_free;
 
 	REGISTER_LONG_CONSTANT("CLICKHOUSE_ASSOC", static_cast<zend_long>(ClickHouseResult::FetchType::ASSOC), CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("CLICKHOUSE_NUM", static_cast<zend_long>(ClickHouseResult::FetchType::NUM), CONST_CS | CONST_PERSISTENT);

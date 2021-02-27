@@ -2,7 +2,7 @@
 
 PHP extension for [Yandex ClickHouse](https://clickhouse.yandex/)
 
-Written in C++ using clickhouse-cpp library
+Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp) library
 
 ## Building
 

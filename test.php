@@ -39,21 +39,14 @@
 		NULL
 	";
 
-/*
-	$result = $ch->query($query) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
+	$result = $ch->query($query) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	while ($row = $result->fetch_assoc())
 		print_r($row);
 
-	$result = $ch->query($query) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
+	$result = $ch->query($query) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	while ($row = $result->fetch_row())
-		print_r($row);
-*/
-
-	$result = $ch->query($query) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
-
-	while ($row = $result->fetch_array(CLICKHOUSE_BOTH))
 		print_r($row);
 
 	echo "Memory: ".memory_get_usage()."\n";

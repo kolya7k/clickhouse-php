@@ -17,6 +17,16 @@ ClickHouse::ClickHouse(zval *zend_this, zend_string *host, zend_string *username
 //	zend_printf("ClickHouse host '%s', username '%s', passwd '%s', dbname '%s', port %u\n", this->host.c_str(), this->username.c_str(), this->passwd.c_str(), this->dbname.c_str(), this->port);
 }
 
+ClickHouse::~ClickHouse()
+{
+/*
+	zval tmp;
+	zval *zv_errno = zend_read_property(Z_OBJCE_P(this->zend_this), this->zend_this, "errno", sizeof("errno") - 1, 1, &tmp);
+	if (zv_errno != nullptr)
+		zend_string_release(Z_STR_P(zv_errno));
+*/
+}
+
 void ClickHouse::connect()
 {
 	ClientOptions options;

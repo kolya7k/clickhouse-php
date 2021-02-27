@@ -28,6 +28,7 @@ public:
 	uint32_t port = DEFAULT_PORT;
 
 	ClickHouse(zval *zend_this, zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port);
+	~ClickHouse();
 
 	void connect();
 

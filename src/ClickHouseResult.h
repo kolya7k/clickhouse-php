@@ -41,6 +41,9 @@ public:
 	[[nodiscard]] bool fetch_assoc(zval *row);
 	[[nodiscard]] bool fetch_row(zval *row);
 	[[nodiscard]] bool fetch_array(zval *row, FetchType type);
+	[[nodiscard]] bool fetch_all(zval *rows, FetchType type);
+
+	[[nodiscard]] static FetchType get_fetch_type(zend_long resulttype);
 };
 
 template<class T>

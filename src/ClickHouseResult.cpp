@@ -19,6 +19,28 @@ bool ClickHouseResult::fetch_array(zval *row, FetchType type)
 	return this->fetch(row, type);
 }
 
+bool ClickHouseResult::fetch_all(zval *rows, FetchType type)
+{
+	bool has_rows = false;
+	while (true)
+	{
+		zval row;
+
+		if (!this->fetch_array(&row, type))
+			break;
+
+		if (!has_rows)
+		{
+			has_rows = true;
+			array_init(rows);
+		}
+
+		add_next_index_zval(rows, &row);
+	}
+
+	return has_rows;
+}
+
 bool ClickHouseResult::fetch(zval *row, FetchType type)
 {
 	while (true)
@@ -209,5 +231,19 @@ void ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string
 	}
 
 	this->add_type(row, value->Nested(), name);
+}
 
+ClickHouseResult::FetchType ClickHouseResult::get_fetch_type(zend_long resulttype)
+{
+	FetchType type = static_cast<ClickHouseResult::FetchType>(resulttype);
+	switch (type)
+	{
+		case ClickHouseResult::FetchType::ASSOC:
+		case ClickHouseResult::FetchType::NUM:
+		case ClickHouseResult::FetchType::BOTH:
+			return type;
+	}
+
+	zend_error(E_WARNING, "Unknown fetch type %lu, CLICKHOUSE_ASSOC, CLICKHOUSE_NUM or CLICKHOUSE_BOTH are supported", resulttype);
+	return ClickHouseResult::FetchType::BOTH;
 }
