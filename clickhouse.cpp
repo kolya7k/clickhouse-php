@@ -155,6 +155,17 @@ PHP_METHOD(ClickHouseResultObject, fetch_assoc)
 		RETURN_FALSE;
 }
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_row, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
+PHP_METHOD(ClickHouseResultObject, fetch_row)
+{
+	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+
+	if (!obj->impl->fetch_row(return_value))
+		RETURN_FALSE;
+}
+
 static const zend_function_entry clickhouse_functions[] = {
 	PHP_ME(ClickHouseObject, __construct, arginfo_clickhouse_construct, ZEND_ACC_PUBLIC)
 	PHP_ME(ClickHouseObject, __destruct, arginfo_clickhouse_destruct, ZEND_ACC_PUBLIC)
@@ -164,6 +175,7 @@ static const zend_function_entry clickhouse_functions[] = {
 
 static const zend_function_entry clickhouse_result_functions[] = {
 	PHP_ME(ClickHouseResultObject, fetch_assoc, arginfo_clickhouse_result_fetch_assoc, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseResultObject, fetch_row, arginfo_clickhouse_result_fetch_row, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 

@@ -6,7 +6,7 @@
 
 	$ch = new ClickHouse(CLICKHOUSE_HOST, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE, CLICKHOUSE_PORT);
 
-	$result = $ch->query("SELECT
+	$query = "SELECT
 		toUInt8(1),
 		toUInt8(-1),
 		toUInt16(1),
@@ -37,9 +37,16 @@
 		toInt8OrNull('123qwe123'),
 		1 == 1,
 		NULL
-	") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
+	";
+
+	$result = $ch->query($query) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
 
 	while ($row = $result->fetch_assoc())
+		print_r($row);
+
+	$result = $ch->query($query) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
+
+	while ($row = $result->fetch_row())
 		print_r($row);
 
 	echo "Memory: ".memory_get_usage()."\n";

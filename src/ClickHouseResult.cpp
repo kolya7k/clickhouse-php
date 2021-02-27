@@ -6,6 +6,16 @@ ClickHouseResult::ClickHouseResult(blocks_t &blocks):
 
 bool ClickHouseResult::fetch_assoc(zval *row)
 {
+	return this->fetch(row, true);
+}
+
+bool ClickHouseResult::fetch_row(zval *row)
+{
+	return this->fetch(row, false);
+}
+
+bool ClickHouseResult::fetch(zval *row, bool assoc)
+{
 	while (true)
 	{
 		if (this->blocks.empty())
@@ -25,11 +35,7 @@ bool ClickHouseResult::fetch_assoc(zval *row)
 		array_init(row);
 
 		for (size_t i = 0; i < columns; i++)
-		{
-			const string &name = block.GetColumnName(i);
-
-			this->add_type(row, block[i], name);
-		}
+			this->add_type(row, block[i], assoc ? block.GetColumnName(i) : "");
 
 		this->next_row++;
 
@@ -116,14 +122,22 @@ void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const string &name) const
 {
 	string_view value = column->As<ColumnString>()->At(this->next_row);
-	add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), value.length());
+
+	if (!name.empty())
+		add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), value.length());
+	else
+		add_next_index_stringl(row, value.data(), value.length());
 }
 
 void ClickHouseResult::add_fixed_string(zval *row, const ColumnRef &column, const string &name) const
 {
 	auto fixed_string = column->As<ColumnFixedString>();
 	string_view value = fixed_string->At(this->next_row);
-	add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), fixed_string->FixedSize());
+
+	if (!name.empty())
+		add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), fixed_string->FixedSize());
+	else
+		add_next_index_stringl(row, value.data(), fixed_string->FixedSize());
 }
 
 void ClickHouseResult::add_datetime(zval *row, const ColumnRef &column, const string &name) const
@@ -138,7 +152,10 @@ void ClickHouseResult::add_datetime(zval *row, const ColumnRef &column, const st
 	if (writed == 0)
 		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
 
-	add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
+	if (!name.empty())
+		add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
+	else
+		add_next_index_stringl(row, buffer, writed);
 }
 
 void ClickHouseResult::add_date(zval *row, const ColumnRef &column, const string &name) const
@@ -153,7 +170,10 @@ void ClickHouseResult::add_date(zval *row, const ColumnRef &column, const string
 	if (writed == 0)
 		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
 
-	add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
+	if (!name.empty())
+		add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
+	else
+		add_next_index_stringl(row, buffer, writed);
 }
 
 void ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string &name) const
@@ -162,7 +182,10 @@ void ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string
 
 	if (value->IsNull(this->next_row))
 	{
-		add_assoc_null_ex(row, name.c_str(), name.length());
+		if (!name.empty())
+			add_assoc_null_ex(row, name.c_str(), name.length());
+		else
+			add_next_index_null(row);
 		return;
 	}
 
