@@ -16,7 +16,8 @@ $ make install
 
 ## Example
 
-```<?php
+```php
+<?php
 
 	$ch = new ClickHouse("127.0.0.1", "default", "", "default", 9000);
 
