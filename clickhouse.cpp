@@ -166,6 +166,38 @@ PHP_METHOD(ClickHouseResultObject, fetch_row)
 		RETURN_FALSE;
 }
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_array, 0, 0, 0)
+	ZEND_ARG_TYPE_INFO(0, resulttype, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+PHP_METHOD(ClickHouseResultObject, fetch_array)
+{
+	zend_long resulttype = static_cast<zend_long>(ClickHouseResult::FetchType::BOTH);
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(resulttype)
+	ZEND_PARSE_PARAMETERS_END();
+
+	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+
+	ClickHouseResult::FetchType type = static_cast<ClickHouseResult::FetchType>(resulttype);
+	switch (type)
+	{
+		case ClickHouseResult::FetchType::ASSOC:
+		case ClickHouseResult::FetchType::NUM:
+		case ClickHouseResult::FetchType::BOTH:
+			break;
+		default:
+			zend_error(E_WARNING, "Unknown fetch type %lu, CLICKHOUSE_ASSOC, CLICKHOUSE_NUM or CLICKHOUSE_BOTH are supported", resulttype);
+			type = ClickHouseResult::FetchType::BOTH;
+			break;
+	}
+
+	if (!obj->impl->fetch_array(return_value, type))
+		RETURN_FALSE;
+}
+
 static const zend_function_entry clickhouse_functions[] = {
 	PHP_ME(ClickHouseObject, __construct, arginfo_clickhouse_construct, ZEND_ACC_PUBLIC)
 	PHP_ME(ClickHouseObject, __destruct, arginfo_clickhouse_destruct, ZEND_ACC_PUBLIC)
@@ -176,6 +208,7 @@ static const zend_function_entry clickhouse_functions[] = {
 static const zend_function_entry clickhouse_result_functions[] = {
 	PHP_ME(ClickHouseResultObject, fetch_assoc, arginfo_clickhouse_result_fetch_assoc, ZEND_ACC_PUBLIC)
 	PHP_ME(ClickHouseResultObject, fetch_row, arginfo_clickhouse_result_fetch_row, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseResultObject, fetch_array, arginfo_clickhouse_result_fetch_array, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
@@ -190,7 +223,11 @@ PHP_MINIT_FUNCTION(clickhouse)
 	memcpy(&clickhouse_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
 	clickhouse_object_handlers.offset = XtOffsetOf(ClickHouseObject, std);
 
-	zend_declare_property_long(clickhouse_class_entry, "errno", sizeof("errno") - 1, 0, ZEND_ACC_PUBLIC);
+	REGISTER_LONG_CONSTANT("CLICKHOUSE_ASSOC", static_cast<zend_long>(ClickHouseResult::FetchType::ASSOC), CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("CLICKHOUSE_NUM", static_cast<zend_long>(ClickHouseResult::FetchType::NUM), CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("CLICKHOUSE_BOTH", static_cast<zend_long>(ClickHouseResult::FetchType::BOTH), CONST_CS | CONST_PERSISTENT);
+
+ 	zend_declare_property_long(clickhouse_class_entry, "errno", sizeof("errno") - 1, 0, ZEND_ACC_PUBLIC);
 	zend_declare_property_string(clickhouse_class_entry, "error", sizeof("error") - 1, "", ZEND_ACC_PUBLIC);
 
 	// ClickHouseResult

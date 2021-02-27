@@ -4,6 +4,14 @@ class ClickHouseResult
 {
 	friend class ClickHouse;
 
+public:
+	enum class FetchType : uint8_t
+	{
+		ASSOC = 1,
+		NUM = 2,
+		BOTH = 3
+	};
+
 private:
 	typedef deque<Block> blocks_t;
 
@@ -11,7 +19,7 @@ private:
 
 	size_t next_row;
 
-	[[nodiscard]] bool fetch(zval *row, bool assoc);
+	[[nodiscard]] bool fetch(zval *row, FetchType type);
 
 	void add_type(zval *row, const ColumnRef &column, const string &name) const;
 
@@ -32,6 +40,7 @@ public:
 
 	[[nodiscard]] bool fetch_assoc(zval *row);
 	[[nodiscard]] bool fetch_row(zval *row);
+	[[nodiscard]] bool fetch_array(zval *row, FetchType type);
 };
 
 template<class T>

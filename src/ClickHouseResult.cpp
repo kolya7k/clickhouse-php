@@ -6,15 +6,20 @@ ClickHouseResult::ClickHouseResult(blocks_t &blocks):
 
 bool ClickHouseResult::fetch_assoc(zval *row)
 {
-	return this->fetch(row, true);
+	return this->fetch(row, FetchType::ASSOC);
 }
 
 bool ClickHouseResult::fetch_row(zval *row)
 {
-	return this->fetch(row, false);
+	return this->fetch(row, FetchType::NUM);
 }
 
-bool ClickHouseResult::fetch(zval *row, bool assoc)
+bool ClickHouseResult::fetch_array(zval *row, FetchType type)
+{
+	return this->fetch(row, type);
+}
+
+bool ClickHouseResult::fetch(zval *row, FetchType type)
 {
 	while (true)
 	{
@@ -35,7 +40,21 @@ bool ClickHouseResult::fetch(zval *row, bool assoc)
 		array_init(row);
 
 		for (size_t i = 0; i < columns; i++)
-			this->add_type(row, block[i], assoc ? block.GetColumnName(i) : "");
+		{
+			switch (type)
+			{
+				case FetchType::ASSOC:
+					this->add_type(row, block[i], block.GetColumnName(i));
+					break;
+				case FetchType::NUM:
+					this->add_type(row, block[i], "");
+					break;
+				case FetchType::BOTH:
+					this->add_type(row, block[i], "");
+					this->add_type(row, block[i], block.GetColumnName(i));
+					break;
+			}
+		}
 
 		this->next_row++;
 
