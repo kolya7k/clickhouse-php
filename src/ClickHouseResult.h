@@ -1,5 +1,7 @@
 #pragma once
 
+#include "util.h"
+
 class ClickHouseResult
 {
 	friend class ClickHouse;
@@ -13,6 +15,9 @@ public:
 	};
 
 private:
+	static constexpr const int64_t PHP_INT_MAX = 9223372036854775807L;
+	static constexpr const int64_t PHP_INT_MIN = ~PHP_INT_MAX;
+
 	zend_object *zend_this;
 
 	deque<Block> blocks;
@@ -61,7 +66,21 @@ struct ClickHouseResultObject
 template<class T>
 void ClickHouseResult::add_long(zval *row, const ColumnRef &column, const string &name) const
 {
-	T value = column->As<ColumnVector<T>>()->At(this->next_row);
+	auto value = column->As<T>()->At(this->next_row);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-compare"
+	if (value > PHP_INT_MAX || (!std::is_unsigned_v<decltype(value)> && value < PHP_INT_MIN))
+	{
+		string value_string = int128_to_string(value);
+
+		if (!name.empty())
+			add_assoc_stringl_ex(row, name.c_str(), name.length(), value_string.data(), value_string.length());
+		else
+			add_next_index_stringl(row, value_string.data(), value_string.length());
+		return;
+	}
+#pragma GCC diagnostic pop
 
 	if (!name.empty())
 		add_assoc_long_ex(row, name.c_str(), name.length(), value);
@@ -72,14 +91,13 @@ void ClickHouseResult::add_long(zval *row, const ColumnRef &column, const string
 template<class T>
 void ClickHouseResult::add_float(zval *row, const ColumnRef &column, const string &name) const
 {
-	T value = column->As<ColumnVector<T>>()->At(this->next_row);
+	auto value = column->As<T>()->At(this->next_row);
 
 	if (!name.empty())
 		add_assoc_double_ex(row, name.c_str(), name.length(), value);
 	else
 		add_next_index_double(row, value);
 }
-
 
 template<class T>
 void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const string &name) const

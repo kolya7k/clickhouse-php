@@ -131,7 +131,7 @@ zend_object* ClickHouse::query(const string &query, bool &success)
 		this->client->ResetConnection();
 		return nullptr;
 	}
-	catch (std::system_error &e)
+	catch (std::runtime_error &e)
 	{
 		success = false;
 

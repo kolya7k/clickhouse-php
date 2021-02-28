@@ -100,34 +100,34 @@ bool ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 	{
 //		case Type::Code::Void:
 		case Type::Code::Int8:
-			this->add_long<int8_t>(row, column, name);
+			this->add_long<ColumnInt8>(row, column, name);
 			break;
 		case Type::Code::Int16:
-			this->add_long<int16_t>(row, column, name);
+			this->add_long<ColumnInt16>(row, column, name);
 			break;
 		case Type::Code::Int32:
-			this->add_long<int32_t>(row, column, name);
+			this->add_long<ColumnInt32>(row, column, name);
 			break;
 		case Type::Code::Int64:
-			this->add_long<int64_t>(row, column, name);
+			this->add_long<ColumnInt64>(row, column, name);
 			break;
 		case Type::Code::UInt8:
-			this->add_long<uint8_t>(row, column, name);
+			this->add_long<ColumnUInt8>(row, column, name);
 			break;
 		case Type::Code::UInt16:
-			this->add_long<uint16_t>(row, column, name);
+			this->add_long<ColumnUInt16>(row, column, name);
 			break;
 		case Type::Code::UInt32:
-			this->add_long<uint32_t>(row, column, name);
+			this->add_long<ColumnUInt32>(row, column, name);
 			break;
 		case Type::Code::UInt64:
-			this->add_long<uint64_t>(row, column, name);
+			this->add_long<ColumnUInt64>(row, column, name);
 			break;
 		case Type::Code::Float32:
-			this->add_float<float>(row, column, name);
+			this->add_float<ColumnFloat32>(row, column, name);
 			break;
 		case Type::Code::Float64:
-			this->add_float<double>(row, column, name);
+			this->add_float<ColumnFloat64>(row, column, name);
 			break;
 		case Type::Code::String:
 			this->add_string<ColumnString>(row, column, name);
@@ -150,7 +150,10 @@ bool ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 //		case Type::Code::UUID:
 //		case Type::Code::IPv4:
 //		case Type::Code::IPv6:
-//		case Type::Code::Int128:
+		case Type::Code::Int128:
+			// clickhouse-cpp doesn't support it yet
+			this->add_long<ColumnInt128>(row, column, name);
+			break;
 		case Type::Code::Decimal:
 		case Type::Code::Decimal32:
 		case Type::Code::Decimal64:

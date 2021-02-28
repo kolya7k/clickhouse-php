@@ -23,21 +23,15 @@ $ make install
 ```
 
 ## Supported types
-* Int8
-* Int16
-* Int32
-* Int64
-* UInt8
-* UInt16
-* UInt32
-* UInt64
-* Float32
-* Float64
+* Int8, Int16, Int32, Int64
+* UInt8, UInt16, UInt32, UInt64
+* Float32, Float64
 * String
-* FixedString
+* FixedString<N>
 * DateTime
 * Date
-* Nullable for all previous types
+* Decimal (only for reading)
+* Nullable<T> for all previous types
 
 ## Limitations and differnce from mysqli
 * No MYSQLI_USE_RESULT logic, all data loaded into memory before using it in PHP code
@@ -67,10 +61,21 @@ $ make install
 		toUInt32(-1),
 		toUInt64(1),
 		toUInt64(-1),
-		toUInt64(18446744073709551615),
 		toUInt64(9223372036854775807),
-		toFloat32(1 / 3),
+		toUInt64(18446744073709551615),
+		toInt8(1),
+		toInt8(-1),
+		toInt16(1),
+		toInt16(-1),
+		toInt32(1),
+		toInt32(-1),
+		toInt64(1),
+		toInt64(-1),
+		toInt64(9223372036854775807),
+		toInt64(-9223372036854775808),
+		toInt64(18446744073709551615),
 		toFloat64(1 / 3),
+		toFloat32(1 / 3),
 		toFixedString('test', 8),
 		toString('test'),
 		toDate('2021-01-01'),
@@ -78,7 +83,8 @@ $ make install
 		toInt8OrNull('123'),
 		toInt8OrNull('123qwe123'),
 		1 == 1,
-		NULL
+		NULL,
+		toDecimal128(123456789.123, 3)
 	") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
 
 	$row = $result->fetch_assoc();

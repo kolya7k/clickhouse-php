@@ -13,6 +13,7 @@
 #include <deque>
 #include <vector>
 #include <unordered_map>
+#include <type_traits>
 #include <memory>
 
 #pragma GCC diagnostic push

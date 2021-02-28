@@ -7,7 +7,11 @@ string int128_to_string(__int128 value)
 	if (value == 0)
 		return string("0");
 
-	char buffer[40] = {0};
+	bool negative = value < 0;
+	if (negative)
+		value *= -1;
+
+	char buffer[64] = {0};
 	char *end = buffer + sizeof(buffer) - 1;
 	*end = '\0';
 
@@ -19,6 +23,9 @@ string int128_to_string(__int128 value)
 		*--end = "0123456789"[value % 10];
 		value /= 10;
 	}
+
+	if (negative)
+		*--end = '-';
 
 	return string(end);
 }
