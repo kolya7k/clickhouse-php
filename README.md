@@ -2,17 +2,48 @@
 
 PHP extension for [Yandex ClickHouse](https://clickhouse.yandex/)
 
+Supports PHP 7.0+
+
 Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp) library
 
 ## Building
 
 Install [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp) first
+Then do
 
 ```sh
 $ phpize && ./configure
 $ make
 $ make install
 ```
+
+## Supported types
+* Int8
+* Int16
+* Int32
+* Int64
+* UInt8
+* UInt16
+* UInt32
+* UInt64
+* Float32
+* Float64
+* String
+* FixedString
+* DateTime
+* Date
+
+## Limitations and differnce from mysqli
+* No MYSQLI_USE_RESULT logic, all data loaded into memory before using it in PHP code
+* More complex insert logic than in mysqli due to clickhouse-cpp limitations (see example below)
+* Not all ClickHouse features have been implemented yet, in development
+* Not all types are supported yet, also in development
+
+## TODO
+* Parse INSERT query like the ClickHouse command line utility does
+* Support for other ClickHouse formats
+* Tests
+* Benchmarks
 
 ## Example
 
