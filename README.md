@@ -115,7 +115,7 @@ $ make install
 
 	$result = $ch->query("SELECT * FROM numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 	while ($row = $result->fetch_assoc())
-		print_r($row);
+		var_dump($row);
 
 	$ch->query("DROP TABLE numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
