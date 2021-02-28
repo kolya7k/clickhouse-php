@@ -85,7 +85,7 @@ $ make install
 	$row = $result->fetch_assoc();
 	var_dump($row);
 
-	$ch->query("CREATE TABLE IF NOT EXISTS numbers (
+	$ch->query("CREATE TABLE IF NOT EXISTS test (
 		id UInt64,
 		name String,
 		key FixedString(5),
@@ -93,39 +93,30 @@ $ make install
 		nullable_fixed Nullable(FixedString(15))
 	) ENGINE = Memory") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
-	// Index-based data
-	$ch->insert("numbers",
+	// Index-based data, columns names in separated array
+	$ch->insert("test",
 		array(
 			array(1, "a", "aa", "2020-01-01", "test1"),
 			array(2, "b", "bb", NULL, "test2"),
 			array(3, "c", "cc", "2020-01-03", NULL)
 		),
-
-		// Types information needed by ClicKHouse API
-		array("UInt64", "String", "FixedString(5)", "Nullable(Date)", "Nullable(FixedString(15))"),
-
-		// Columns names in separated array
 		array("id", "name", "key", "nullable_date", "nullable_fixed")
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
-	// Associative array data, slower than index-based
-	$ch->insert("numbers",
+	// Associative array data, columns names inside data array, slower than index-based
+	$ch->insert("test",
 		array(
-			// Columns names inside data array
 			array('id' => 4, 'name' => "d", 'key' => "dd", 'nullable_date' => "2020-01-04",	'nullable_fixed' => NULL),
 			array('id' => 5, 'name' => "e", 'key' => "ee", 'nullable_date' => NULL,		'nullable_fixed' => "test5"),
 			array('id' => 6, 'name' => "f", 'key' => "ff", 'nullable_date' => "2020-01-06",	'nullable_fixed' => "test6")
-		),
-
-		// Types information needed by ClicKHouse API
-		array('id' => "UInt64", 'name' => "String", 'key' => "FixedString(5)", 'nullable_date' => "Nullable(Date)", 'nullable_fixed' => "Nullable(FixedString(15))")
+		)
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
-	$result = $ch->query("SELECT * FROM numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+	$result = $ch->query("SELECT * FROM test") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 	while ($row = $result->fetch_assoc())
 		var_dump($row);
 
-	$ch->query("DROP TABLE numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+	$ch->query("DROP TABLE test") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	echo "Memory: ".memory_get_usage()."\n";
 

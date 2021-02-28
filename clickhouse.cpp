@@ -131,10 +131,9 @@ PHP_METHOD(ClickHouseObject, query)
 	RETVAL_OBJ(result);
 }
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_insert, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_insert, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, table_name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, values, IS_ARRAY, 0)
-	ZEND_ARG_TYPE_INFO(0, types, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, fields, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
@@ -142,20 +141,18 @@ PHP_METHOD(ClickHouseObject, insert)
 {
 	zend_string *table_name;
 	zend_array *values;
-	zend_array *types;
 	zend_array *fields = nullptr;
 
-	ZEND_PARSE_PARAMETERS_START(3, 4)
+	ZEND_PARSE_PARAMETERS_START(2, 3)
 		Z_PARAM_STR(table_name)
 		Z_PARAM_ARRAY_HT(values)
-		Z_PARAM_ARRAY_HT(types)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_ARRAY_HT(fields)
 	ZEND_PARSE_PARAMETERS_END();
 
 	ClickHouseObject *obj = Z_CLICKHOUSE_P(ZEND_THIS);
 
-	bool result = obj->impl->insert(string(ZSTR_VAL(table_name), ZSTR_LEN(table_name)), values, types, fields);
+	bool result = obj->impl->insert(string(ZSTR_VAL(table_name), ZSTR_LEN(table_name)), values, fields);
 	if (result)
 		RETURN_TRUE;
 	RETURN_FALSE;

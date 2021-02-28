@@ -13,6 +13,7 @@
 #include <deque>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <type_traits>
 #include <memory>
 
@@ -21,6 +22,7 @@ using std::string_view;
 using std::deque;
 using std::vector;
 using std::unordered_map;
+using std::unordered_set;
 
 using std::shared_ptr;
 using std::make_shared;

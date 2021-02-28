@@ -17,27 +17,21 @@ private:
 
 	[[nodiscard]] bool is_connected() const;
 
+	[[nodiscard]] bool do_insert(const string &table_name, zend_array *values, zend_array *fields);
+
 	void set_error(zend_long code, const char *message) const;
 	void set_affected_rows(zend_long value) const;
-
-	static const unordered_map<string, Type::Code> types_names;
 
 	template<class T, class V>
 	static void add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null);
 
 	static void add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null);
 
-	[[nodiscard]] static bool parse_types(zend_array *types, vector<pair<Type::Code, string>> &data);
 	[[nodiscard]] static bool parse_fields(zend_array *fields, vector<zend_string*> &data);
 
-	[[nodiscard]] static bool parse_type(const string &text, string &type, string &param);
+	[[nodiscard]] static bool set_column_index(zend_array *names, zend_string *name);
 
-	[[nodiscard]] static Type::Code get_type(zend_array *types, zend_string *type, string &param);
-	[[nodiscard]] static Type::Code get_type(const string &text, string &param);
-
-	[[nodiscard]] static zend_ulong get_column_index(zend_array *names, zend_string *name);
-
-	[[nodiscard]] static bool add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, Type::Code type, const string &type_param, bool nullable = false);
+	[[nodiscard]] static bool add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable = false);
 
 public:
 	explicit ClickHouse(zend_object *zend_this);
@@ -45,7 +39,7 @@ public:
 	void connect(zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port);
 
 	[[nodiscard]] zend_object* query(const string &query, bool &success);
-	[[nodiscard]] bool insert(const string &table_name, zend_array *values, zend_array *types, zend_array *fields);
+	[[nodiscard]] bool insert(const string &table_name, zend_array *values, zend_array *fields);
 };
 
 template<class T, class V>
