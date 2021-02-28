@@ -27,11 +27,11 @@ $ make install
 * UInt8, UInt16, UInt32, UInt64
 * Float32, Float64
 * String
-* FixedString<N>
+* FixedString\<N\>
 * DateTime
 * Date
 * Decimal (only for reading)
-* Nullable<T> for all previous types
+* Nullable\<T\> for all previous types
 
 ## Limitations and differnce from mysqli
 * No MYSQLI_USE_RESULT logic, all data loaded into memory before using it in PHP code
