@@ -3,6 +3,7 @@
 #include <cinttypes>
 #include <cstring>
 #include <ctime>
+#include <cstdlib>
 
 #include <string>
 #include <string_view>
@@ -24,6 +25,8 @@ using std::unordered_map;
 
 using std::shared_ptr;
 using std::make_shared;
+
+using std::pair;
 
 using namespace clickhouse;
 

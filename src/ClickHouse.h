@@ -22,12 +22,6 @@ private:
 
 	static const unordered_map<string, Type::Code> types_names;
 
-	static bool parse_types(zend_array *types, vector<Type::Code> &data);
-	static bool parse_fields(zend_array *fields, vector<zend_string*> &data);
-
-	static Type::Code get_type(zend_array *types, zend_string *type);
-	static zend_ulong get_column_index(zend_array *names, zend_string *name);
-
 	template<class T>
 	static void add_long(Block &block, zend_string *name, zend_ulong index, zend_long value);
 
@@ -37,11 +31,21 @@ private:
 	template<class T>
 	static void add_null(Block &block, zend_string *name, zend_ulong index);
 
+	static void add_null_fixed(Block &block, zend_string *name, zend_ulong index, zend_long size);
+
 	static void add_string(Block &block, zend_string *name, zend_ulong index, const string_view &value);
-	static void add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value);
+	static void add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value, zend_long size);
 
 	static void add_date(Block &block, zend_string *name, zend_ulong index, time_t time);
 	static void add_datetime(Block &block, zend_string *name, zend_ulong index, time_t time);
+
+	[[nodiscard]] static bool parse_types(zend_array *types, vector<pair<Type::Code, string>> &data);
+	[[nodiscard]] static bool parse_fields(zend_array *fields, vector<zend_string*> &data);
+
+	[[nodiscard]] static bool parse_type(zval *val, string &type, string &param);
+	[[nodiscard]] static Type::Code get_type(zend_array *types, zend_string *type, string &param);
+	[[nodiscard]] static Type::Code get_type(zval *type_val, string &param);
+	[[nodiscard]] static zend_ulong get_column_index(zend_array *names, zend_string *name);
 
 public:
 	explicit ClickHouse(zend_object *zend_this);
@@ -69,7 +73,6 @@ void ClickHouse::add_float(Block &block, zend_string *name, zend_ulong index, do
 
 	block[index]->As<T>()->Append(value);
 }
-
 
 template<class T>
 void ClickHouse::add_null(Block &block, zend_string *name, zend_ulong index)

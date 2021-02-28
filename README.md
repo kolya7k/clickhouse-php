@@ -78,25 +78,25 @@ $ make install
 	while ($row = $result->fetch_assoc())
 		print_r($row);
 
-	$ch->query("CREATE TABLE IF NOT EXISTS numbers (id UInt64, name String, value FixedString(3)) ENGINE = Memory") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+	$ch->query("CREATE TABLE IF NOT EXISTS numbers (id UInt64, name String, value FixedString(5)) ENGINE = Memory") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	$ch->insert("numbers",
 		array(
-			[1, "a", "aa\0"],						// FixedString needs full size
-			[2, "b", "bb\0"],
-			[3, "c", "cc\0"]
+			[1, "a", "aa"],
+			[2, "b", "bb"],
+			[3, "c", "cc"]
 		),
-		array("UInt32", "String", "FixedString"),				// Types information needed by ClicKHouse API
+		array("UInt32", "String", "FixedString(5)"),				// Types information needed by ClicKHouse API
 		array("id", "name", "key")						// Columns names in separated array
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	$ch->insert("numbers",
 		array(
-			['id' => 4, 'name' => "d", 'key' => "aa\0"],			// Columns names inside data array
-			['id' => 5, 'name' => "e", 'key' => "bb\0"],			// FixedString needs full size
-			['id' => 6, 'name' => "f", 'key' => "cc\0"]
+			['id' => 4, 'name' => "d", 'key' => "dd"],			// Columns names inside data array
+			['id' => 5, 'name' => "e", 'key' => "ee"],
+			['id' => 6, 'name' => "f", 'key' => "ff"]
 		),
-		array('id' => "UInt32", 'name' => "String", 'key' => "FixedString")	// Types information needed by ClicKHouse API
+		array('id' => "UInt32", 'name' => "String", 'key' => "FixedString(5)")	// Types information needed by ClicKHouse API
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	$result = $ch->query("SELECT * FROM numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
@@ -108,3 +108,4 @@ $ make install
 	echo "Memory: ".memory_get_usage()."\n";
 
 ?>
+```

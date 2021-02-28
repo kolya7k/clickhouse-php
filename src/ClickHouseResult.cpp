@@ -247,11 +247,11 @@ ClickHouseResult::FetchType ClickHouseResult::get_fetch_type(zend_long resulttyp
 void ClickHouseResult::set_num_rows(zend_long value) const
 {
 #if PHP_API_VERSION >= 20200930
-	zend_update_property_long(zend_this->ce, zend_this, "num_rows", sizeof("num_rows") - 1, value);
+	zend_update_property_long(this->zend_this->ce, this->zend_this, "num_rows", sizeof("num_rows") - 1, value);
 #else
 	zval zv;
-	ZVAL_OBJ(&zv, zend_this);
+	ZVAL_OBJ(&zv, this->zend_this);
 
-	zend_update_property_long(zend_this->ce, &zv, "num_rows", sizeof("num_rows") - 1, value);
+	zend_update_property_long(this->zend_this->ce, &zv, "num_rows", sizeof("num_rows") - 1, value);
 #endif
 }
