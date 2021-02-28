@@ -180,9 +180,9 @@ bool ClickHouse::do_insert(const string &table_name, zend_array *values, zend_ar
 	bool value_found = false;
 	bool numeric_keys = false;
 
-	string insert_query("INSERT INTO `");
+	string insert_query("INSERT INTO ");
 	insert_query.append(table_name);
-	insert_query.append("` (");
+	insert_query.append(" (");
 
 	Bucket *first_row_column_bucket;
 	ZEND_HASH_FOREACH_BUCKET(Z_ARR_P(first_row), first_row_column_bucket)
@@ -223,9 +223,7 @@ bool ClickHouse::do_insert(const string &table_name, zend_array *values, zend_ar
 		if (value_found)
 			insert_query.append(", ");
 
-		insert_query.append("`");
 		insert_query.append(ZSTR_VAL(name), ZSTR_LEN(name));
-		insert_query.append("`");
 
 		value_found = true;
 		numeric_keys = is_numeric_key;
