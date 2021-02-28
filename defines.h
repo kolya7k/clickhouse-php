@@ -16,11 +16,6 @@
 #include <type_traits>
 #include <memory>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-#include <clickhouse/client.h>
-#pragma GCC diagnostic pop
-
 using std::string;
 using std::string_view;
 using std::deque;
@@ -32,6 +27,8 @@ using std::make_shared;
 
 using std::pair;
 
-using namespace clickhouse;
-
 #include "php_clickhouse.h"
+
+#include "clickhouse/client.h"
+
+using namespace clickhouse;
