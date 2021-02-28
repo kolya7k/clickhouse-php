@@ -1,7 +1,5 @@
 #include "ClickHouseResult.h"
 
-#include "util.h"
-
 ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count):
 	zend_this(zend_this), blocks(move(blocks)), next_row(0)
 {
