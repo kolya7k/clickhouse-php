@@ -8,14 +8,9 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 
 ## Dependencies
 * PHP 7.0+
-* [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp)
+* GCC 10+
 
 ## Building
-
-Install [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp)
-
-Then do
-
 ```sh
 $ phpize && ./configure
 $ make
