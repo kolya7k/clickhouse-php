@@ -1,4 +1,4 @@
-USE_ZEND_ALLOC=0 ZEND_DONT_UNLOAD_MODULES=1 valgrind --leak-check=full --track-origins=yes php -dextension=modules/clickhouse.so test.php
+USE_ZEND_ALLOC=0 ZEND_DONT_UNLOAD_MODULES=1 valgrind --leak-check=full --track-origins=yes php -dextension=modules/clickhouse.so test.php 2>&1
 
 #perf record --call-graph dwarf,65528 php -dextension=modules/clickhouse.so test.php
 

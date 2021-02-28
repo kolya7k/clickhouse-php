@@ -5,6 +5,7 @@ build
 .hgrc
 .idea
 CMakeLists.txt
+test.php
 
 *.lo
 *.la

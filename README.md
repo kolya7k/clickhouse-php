@@ -47,6 +47,33 @@ $ make install
 	while ($row = $result->fetch_assoc())
 		print_r($row);
 
+	$ch->query("CREATE TABLE IF NOT EXISTS numbers (id UInt64, name String, value FixedString(3)) ENGINE = Memory") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+
+	$ch->insert("numbers",
+		array(
+			[1, "a", "aa\0"],						// FixedString needs full size
+			[2, "b", "bb\0"],
+			[3, "c", "cc\0"]
+		),
+		array("UInt32", "String", "FixedString"),				// Types information needed by ClicKHouse API
+		array("id", "name", "key")						// Columns names in separated array
+	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+
+	$ch->insert("numbers",
+		array(
+			['id' => 4, 'name' => "d", 'key' => "aa\0"],			// Columns names inside data array
+			['id' => 5, 'name' => "e", 'key' => "bb\0"],			// FixedString needs full size
+			['id' => 6, 'name' => "f", 'key' => "cc\0"]
+		),
+		array('id' => "UInt32", 'name' => "String", 'key' => "FixedString")	// Types information needed by ClicKHouse API
+	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+
+	$result = $ch->query("SELECT * FROM numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+	while ($row = $result->fetch_assoc())
+		print_r($row);
+
+	$ch->query("DROP TABLE numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+
 	echo "Memory: ".memory_get_usage()."\n";
 
 ?>

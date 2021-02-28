@@ -53,13 +53,7 @@ bool ClickHouseResult::fetch(zval *row, FetchType type)
 		size_t columns = block.GetColumnCount();
 		size_t rows = block.GetRowCount();
 
-		if (rows == 0)
-		{
-			this->blocks.pop_front();
-			continue;
-		}
-
-		array_init(row);
+		array_init_size(row, type == FetchType::BOTH ? columns * 2 : columns);
 
 		for (size_t i = 0; i < columns; i++)
 		{
@@ -156,7 +150,7 @@ void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 //		case Type::Code::Decimal128:
 //		case Type::Code::LowCardinality:
 		default:
-			zend_error_noreturn(E_WARNING, "Unknown column type %d", type_code);
+			zend_error_noreturn(E_WARNING, "Type %d is unsupported", type_code);
 	}
 }
 

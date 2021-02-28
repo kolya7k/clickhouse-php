@@ -1,8 +1,48 @@
 #include "ClickHouse.h"
 
-ClickHouse::ClickHouse(zval *zend_this, zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port):
-	zend_this(zend_this)
+const unordered_map<string, Type::Code> ClickHouse::types_names
 {
+//	{"Void", Type::Code::Void},
+	{"Int8", Type::Code::Int8},
+	{"Int16", Type::Code::Int16},
+	{"Int32", Type::Code::Int32},
+	{"Int64", Type::Code::Int64},
+	{"UInt8", Type::Code::UInt8},
+	{"UInt16", Type::Code::UInt16},
+	{"UInt32", Type::Code::UInt32},
+	{"UInt64", Type::Code::UInt64},
+	{"Float32", Type::Code::Float32},
+	{"Float64", Type::Code::Float64},
+	{"String", Type::Code::String},
+	{"FixedString", Type::Code::FixedString},
+	{"DateTime", Type::Code::DateTime},
+	{"Date", Type::Code::Date},
+//	{"Array", Type::Code::Array},
+//	{"Nullable", Type::Code::Nullable},
+//	{"Tuple", Type::Code::Tuple},
+//	{"Enum8", Type::Code::Enum8},
+//	{"Enum16", Type::Code::Enum16},
+//	{"UUID", Type::Code::UUID},
+//	{"IPv4", Type::Code::IPv4},
+//	{"IPv6", Type::Code::IPv6},
+//	{"Int128", Type::Code::Int128},
+//	{"Decimal", Type::Code::Decimal},
+//	{"Decimal32", Type::Code::Decimal32},
+//	{"Decimal64", Type::Code::Decimal64},
+//	{"Decimal128", Type::Code::Decimal128},
+//	{"LowCardinality", Type::Code::LowCardinality}
+};
+
+ClickHouse::ClickHouse(zval *zend_this, zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port)
+{
+#if PHP_API_VERSION >= 20200930
+	this->zend_ce = Z_OBJCE_P(zend_this);
+	this->zend_this = Z_OBJ_P(zend_this);
+#else
+	this->zend_ce = Z_OBJCE_P(zend_this);
+	this->zend_this = zend_this;
+#endif
+
 	if (host != nullptr)
 		this->host = string(ZSTR_VAL(host), ZSTR_LEN(host));
 	if (username != nullptr)
@@ -17,16 +57,6 @@ ClickHouse::ClickHouse(zval *zend_this, zend_string *host, zend_string *username
 //	zend_printf("ClickHouse host '%s', username '%s', passwd '%s', dbname '%s', port %u\n", this->host.c_str(), this->username.c_str(), this->passwd.c_str(), this->dbname.c_str(), this->port);
 }
 
-ClickHouse::~ClickHouse()
-{
-/*
-	zval tmp;
-	zval *zv_errno = zend_read_property(Z_OBJCE_P(this->zend_this), this->zend_this, "errno", sizeof("errno") - 1, 1, &tmp);
-	if (zv_errno != nullptr)
-		zend_string_release(Z_STR_P(zv_errno));
-*/
-}
-
 void ClickHouse::connect()
 {
 	ClientOptions options;
@@ -35,6 +65,7 @@ void ClickHouse::connect()
 	options.SetPassword(this->passwd);
 	options.SetDefaultDatabase(this->dbname);
 	options.SetPort(this->port);
+	options.SetCompressionMethod(CompressionMethod::LZ4);
 
 	try
 	{
@@ -47,60 +78,526 @@ void ClickHouse::connect()
 	}
 }
 
-ClickHouseResult* ClickHouse::query(const string &query)
-{
-	string trimmed = ltrim(query);
-
-	bool is_select = trimmed.length() >= SELECT.length() && strncasecmp(trimmed.c_str(), SELECT.c_str(), SELECT.length()) == 0;
-	if (is_select)
-		return this->select(query);
-
-	bool is_insert = trimmed.length() >= INSERT.length() && strncasecmp(trimmed.c_str(), INSERT.c_str(), INSERT.length()) == 0;
-	if (is_insert)
-		return this->insert(query);
-
-	return this->execute(query);
-}
-
-ClickHouseResult* ClickHouse::select(const string &query)
+ClickHouseResult* ClickHouse::query(const string &query, bool &success)
 {
 	if (!this->is_connected())
 		return nullptr;
 
 	ClickHouseResult::blocks_t blocks;
 
+	zend_long rows_count = 0;
+	bool has_data = false;
 	try
 	{
-		this->client->Select(query, [&blocks] (const Block &block)
+		Query ch_query(query);
+		ch_query.OnData([&blocks, &rows_count, &has_data] (const Block &block)
 		{
+			if (block.GetColumnCount() != 0)
+				has_data = true;
+
+			if (block.GetRowCount() == 0)
+				return;
+
+			rows_count += block.GetRowCount();
 			blocks.push_back(block);
 		});
+
+		this->client->Execute(ch_query);
 	}
 	catch (ServerException &e)
 	{
 		this->set_error(e.GetCode(), e.what());
+		this->set_num_rows(0);
+		this->set_affected_rows(-1);
+
+		success = false;
 		return nullptr;
 	}
 
-	ClickHouseResult *result = new ClickHouseResult(blocks);
+	this->set_num_rows(rows_count);
+	this->set_affected_rows(rows_count);
 
-	return result;
-}
+	success = true;
 
-ClickHouseResult* ClickHouse::insert(const string &query)
-{
-	if (!this->is_connected())
+	if (!has_data)
 		return nullptr;
 
-	return nullptr;
+	return new ClickHouseResult(blocks);
 }
 
-ClickHouseResult* ClickHouse::execute(const string &query)
+bool ClickHouse::parse_fields(zend_array *fields, vector<zend_string*> &data)
+{
+	Bucket *bucket;
+	ZEND_HASH_FOREACH_BUCKET(fields, bucket)
+	{
+		if (bucket->key != nullptr)
+		{
+			zend_error(E_WARNING, "Field key must be number but got string '%s'", ZSTR_VAL(bucket->key));
+			return false;
+		}
+
+		if (Z_TYPE(bucket->val) != IS_STRING)
+		{
+			zend_error(E_WARNING, "Field must be string but got type %d", Z_TYPE(bucket->val));
+			return false;
+		}
+
+		if (bucket->h != data.size())
+		{
+			zend_error(E_WARNING, "Field keys must go continuously in ascending order, key %lu received but %lu expected", bucket->h, data.size());
+			return false;
+		}
+
+		data.push_back(Z_STR(bucket->val));
+	}
+	ZEND_HASH_FOREACH_END();
+
+	return true;
+}
+
+bool ClickHouse::parse_types(zend_array *types, vector<Type::Code> &data)
+{
+	Bucket *bucket;
+	ZEND_HASH_FOREACH_BUCKET(types, bucket)
+	{
+		if (bucket->key != nullptr)
+		{
+			zend_error(E_WARNING, "Type key must be number but got string '%s'", ZSTR_VAL(bucket->key));
+			return false;
+		}
+
+		if (Z_TYPE(bucket->val) != IS_STRING)
+		{
+			zend_error(E_WARNING, "Type must be string but got type %d", Z_TYPE(bucket->val));
+			return false;
+		}
+
+		if (bucket->h != data.size())
+		{
+			zend_error(E_WARNING, "Type keys must go continuously in ascending order, key %lu received but %lu expected", bucket->h, data.size());
+			return false;
+		}
+
+		string type(Z_STRVAL(bucket->val), Z_STRLEN(bucket->val));
+
+		auto iter = ClickHouse::types_names.find(type);
+		if (iter == ClickHouse::types_names.end())
+		{
+			zend_error(E_WARNING, "Type '%s' is unsupported", type.c_str());
+			return false;
+		}
+
+		data.push_back(iter->second);
+	}
+	ZEND_HASH_FOREACH_END();
+
+	return true;
+}
+
+Type::Code ClickHouse::get_type(zend_array *types, zend_string *name)
+{
+	zval *type_val = zend_hash_find(types, name);
+	if (type_val == nullptr)
+	{
+		zend_error(E_WARNING, "Type for column '%s' not found", ZSTR_VAL(name));
+		return static_cast<Type::Code>(-1);
+	}
+
+	string type(Z_STRVAL_P(type_val), Z_STRLEN_P(type_val));
+
+	auto iter = ClickHouse::types_names.find(type);
+	if (iter == ClickHouse::types_names.end())
+	{
+		zend_error(E_WARNING, "Unsupported type '%s'", type.c_str());
+		return static_cast<Type::Code>(-1);
+	}
+
+	return iter->second;
+}
+
+zend_ulong ClickHouse::get_column_index(zend_array *names, zend_string *name)
+{
+	zval *index_val = zend_hash_find(names, name);
+	if (index_val != nullptr)
+		return Z_LVAL_P(index_val);
+
+	zend_ulong index = zend_hash_num_elements(names);
+
+	zval tmp;
+	ZVAL_LONG(&tmp, index);
+
+	zend_hash_add(names, name, &tmp);
+	return index;
+}
+
+void ClickHouse::add_string(Block &block, zend_string *name, zend_ulong index, const string_view &value)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnString>());
+
+	block[index]->As<ColumnString>()->Append(value);
+}
+
+void ClickHouse::add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnFixedString>(value.length()));
+
+	block[index]->As<ColumnFixedString>()->Append(value);
+}
+
+void ClickHouse::add_date(Block &block, zend_string *name, zend_ulong index, time_t time)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnDate>());
+
+	block[index]->As<ColumnDate>()->Append(time);
+}
+
+void ClickHouse::add_datetime(Block &block, zend_string *name, zend_ulong index, time_t time)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnDateTime>());
+
+	block[index]->As<ColumnDateTime>()->Append(time);
+}
+
+bool ClickHouse::insert(const string &table_name, zend_array *values, zend_array *types, zend_array *fields)
 {
 	if (!this->is_connected())
-		return nullptr;
+		return false;
 
-	return nullptr;
+	if (table_name.empty())
+	{
+		zend_error(E_WARNING, "Table name is empty");
+		return false;
+	}
+
+	vector<Type::Code> types_data;
+	vector<zend_string*> fields_data;
+
+	if (fields != nullptr)
+	{
+		if (!ClickHouse::parse_types(types, types_data))
+			return false;
+
+		if (!ClickHouse::parse_fields(fields, fields_data))
+			return false;
+
+		if (types_data.size() != fields_data.size())
+		{
+			zend_error(E_WARNING, "Types and fields arrays have different sizes %lu != %lu", types_data.size(), fields_data.size());
+			return false;
+		}
+	}
+
+	zval column_names;
+	array_init(&column_names);
+
+	Block block;
+
+	bool value_found = false;
+	bool numeric_keys = false;
+
+	Bucket *values_bucket;
+	ZEND_HASH_FOREACH_BUCKET(values, values_bucket)
+	{
+		if (values_bucket->key != nullptr)
+		{
+			zend_error(E_WARNING, "Values key must be number but got string '%s'", ZSTR_VAL(values_bucket->key));
+			zend_array_destroy(Z_ARR(column_names));
+			return false;
+		}
+
+		if (Z_TYPE(values_bucket->val) != IS_ARRAY)
+		{
+			zend_error(E_WARNING, "Values must be array but got type %d", Z_TYPE(values_bucket->val));
+			zend_array_destroy(Z_ARR(column_names));
+			return false;
+		}
+
+		Bucket *value_bucket;
+		ZEND_HASH_FOREACH_BUCKET(Z_ARR(values_bucket->val), value_bucket)
+		{
+			zend_string *name;
+			zend_ulong index;
+			Type::Code type;
+
+			if (value_bucket->key == nullptr)
+			{
+				if (value_bucket->h >= fields_data.size())
+				{
+					zend_error(E_WARNING, "Field name is not provided for row %lu and value %lu", values_bucket->h, value_bucket->h);
+					zend_array_destroy(Z_ARR(column_names));
+					return false;
+				}
+
+				if (value_found && !numeric_keys)
+				{
+					zend_error(E_WARNING, "Mixing numeric and string field names is not allowed");
+					zend_array_destroy(Z_ARR(column_names));
+					return false;
+				}
+
+				value_found = true;
+				numeric_keys = true;
+
+				index = value_bucket->h;
+
+				name = fields_data[index];
+				type = types_data[index];
+			}
+			else
+			{
+				if (value_found && numeric_keys)
+				{
+					zend_error(E_WARNING, "Mixing numeric and string field names is not allowed");
+					zend_array_destroy(Z_ARR(column_names));
+					return false;
+				}
+
+				value_found = true;
+				numeric_keys = false;
+
+				name = value_bucket->key;
+
+				index = ClickHouse::get_column_index(Z_ARR(column_names), name);
+				type = ClickHouse::get_type(types, name);
+			}
+
+			if (type == static_cast<Type::Code>(-1))
+			{
+				zend_array_destroy(Z_ARR(column_names));
+				return false;
+			}
+
+			auto php_type = Z_TYPE(value_bucket->val);
+			bool types_match = true;
+
+			switch (type)
+			{
+//				case Type::Code::Void:
+				case Type::Code::Int8:
+				case Type::Code::Int16:
+				case Type::Code::Int32:
+				case Type::Code::Int64:
+				case Type::Code::UInt8:
+				case Type::Code::UInt16:
+				case Type::Code::UInt32:
+				case Type::Code::UInt64:
+					types_match = (php_type == IS_LONG);
+					break;
+				case Type::Code::Float32:
+				case Type::Code::Float64:
+					types_match = (php_type == IS_DOUBLE);
+					break;
+				case Type::Code::String:
+					types_match = (php_type == IS_STRING);
+					break;
+				case Type::Code::DateTime:
+				case Type::Code::Date:
+					types_match = (php_type == IS_STRING || php_type == IS_LONG);
+					break;
+//				case Type::Code::Array:
+				case Type::Code::Nullable:
+					// TODO: Check nested column
+//					types_match = (php_type == IS_NULL);
+					break;
+//				case Type::Code::Tuple:
+//				case Type::Code::Enum8:
+//				case Type::Code::Enum16:
+//				case Type::Code::UUID:
+//				case Type::Code::IPv4:
+//				case Type::Code::IPv6:
+//				case Type::Code::Int128:
+//				case Type::Code::Decimal:
+//				case Type::Code::Decimal32:
+//				case Type::Code::Decimal64:
+//				case Type::Code::Decimal128:
+//				case Type::Code::LowCardinality:
+				default:
+					zend_error(E_WARNING, "Value type %d is unsupported", type);
+					zend_array_destroy(Z_ARR(column_names));
+					return false;
+			}
+
+			if (!types_match)
+			{
+				zend_error(E_WARNING, "Value type and described type mismatch for row %lu and value '%s'", values_bucket->h, ZSTR_VAL(name));
+				zend_array_destroy(Z_ARR(column_names));
+				return false;
+			}
+
+			switch (type)
+			{
+//				case Type::Code::Void:
+				case Type::Code::Int8:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnInt8>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnInt8>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::Int16:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnInt16>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnInt16>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::Int32:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnInt32>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnInt32>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::Int64:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnInt64>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnInt64>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::UInt8:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnUInt8>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnUInt8>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::UInt16:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnUInt16>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnUInt16>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::UInt32:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnUInt32>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnUInt32>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::UInt64:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnUInt64>(block, name, index);
+					else
+						ClickHouse::add_long<ColumnUInt64>(block, name, index, Z_LVAL(value_bucket->val));
+					break;
+				case Type::Code::Float32:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnFloat32>(block, name, index);
+					else
+						ClickHouse::add_float<ColumnFloat32>(block, name, index, Z_DVAL(value_bucket->val));
+					break;
+				case Type::Code::Float64:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnFloat64>(block, name, index);
+					else
+						ClickHouse::add_float<ColumnFloat64>(block, name, index, Z_DVAL(value_bucket->val));
+					break;
+				case Type::Code::String:
+					if (php_type == IS_NULL)
+						ClickHouse::add_null<ColumnString>(block, name, index);
+					else
+						ClickHouse::add_string(block, name, index, string_view(Z_STRVAL(value_bucket->val), Z_STRLEN(value_bucket->val)));
+					break;
+				case Type::Code::FixedString:
+//					if (php_type == IS_NULL)
+//						ClickHouse::add_null<ColumnFixedString>(block, name, index);
+//					else
+						ClickHouse::add_fixed_string(block, name, index, string_view(Z_STRVAL(value_bucket->val), Z_STRLEN(value_bucket->val)));
+					break;
+				case Type::Code::DateTime:
+				{
+					if (php_type == IS_NULL)
+					{
+						ClickHouse::add_null<ColumnDateTime>(block, name, index);
+						break;
+					}
+
+					time_t timestamp;
+					if (php_type == IS_LONG)
+						timestamp = Z_LVAL(value_bucket->val);
+					else
+					{
+						tm tm_time{};
+						if (strptime(Z_STRVAL(value_bucket->val), "%Y-%m-%d %H:%M:%S", &tm_time) == nullptr)
+						{
+							zend_error(E_WARNING, "Failed to parse date '%s' from format '%%Y-%%m-%%d %%H:%%M:%%S'", Z_STRVAL(value_bucket->val));
+							zend_array_destroy(Z_ARR(column_names));
+							return false;
+						}
+
+						timestamp = mktime(&tm_time);
+					}
+
+					ClickHouse::add_datetime(block, name, index, timestamp);
+					break;
+				}
+				case Type::Code::Date:
+				{
+					if (php_type == IS_NULL)
+					{
+						ClickHouse::add_null<ColumnDate>(block, name, index);
+						break;
+					}
+
+					time_t timestamp;
+					if (php_type == IS_LONG)
+						timestamp = Z_LVAL(value_bucket->val) * (24 * 60 * 60);
+					else
+					{
+						tm tm_time{};
+						if (strptime(Z_STRVAL(value_bucket->val), "%Y-%m-%d", &tm_time) == nullptr)
+						{
+							zend_error(E_WARNING, "Failed to parse date '%s' from format '%%Y-%%m-%%d'", Z_STRVAL(value_bucket->val));
+							zend_array_destroy(Z_ARR(column_names));
+							return false;
+						}
+
+						timestamp = timegm(&tm_time);
+					}
+
+					ClickHouse::add_date(block, name, index, timestamp);
+					break;
+				}
+//				case Type::Code::Array:
+				case Type::Code::Nullable:
+//				case Type::Code::Tuple:
+//				case Type::Code::Enum8:
+//				case Type::Code::Enum16:
+//				case Type::Code::UUID:
+//				case Type::Code::IPv4:
+//				case Type::Code::IPv6:
+//				case Type::Code::Int128:
+//				case Type::Code::Decimal:
+//				case Type::Code::Decimal32:
+//				case Type::Code::Decimal64:
+//				case Type::Code::Decimal128:
+//				case Type::Code::LowCardinality:
+				default:
+					zend_error(E_WARNING, "Value type %d is unsupported", type);
+					zend_array_destroy(Z_ARR(column_names));
+					return false;
+			}
+		}
+		ZEND_HASH_FOREACH_END();
+	}
+	ZEND_HASH_FOREACH_END();
+
+	zend_array_destroy(Z_ARR(column_names));
+
+	try
+	{
+		block.RefreshRowCount();
+
+		this->client->Insert(table_name, block);
+	}
+	catch (ServerException &e)
+	{
+		this->set_error(e.GetCode(), e.what());
+		this->set_num_rows(0);
+		this->set_affected_rows(-1);
+		return false;
+	}
+
+	return true;
 }
 
 bool ClickHouse::is_connected() const
@@ -112,13 +609,18 @@ bool ClickHouse::is_connected() const
 	return false;
 }
 
-void ClickHouse::set_error(uint32_t code, const char *message) const
+void ClickHouse::set_error(zend_long code, const char *message) const
 {
-#if PHP_API_VERSION >= 20200930
-	zend_update_property_long(Z_OBJCE_P(this->zend_this), Z_OBJ_P(this->zend_this), "errno", sizeof("errno") - 1, code);
-	zend_update_property_string(Z_OBJCE_P(this->zend_this), Z_OBJ_P(this->zend_this), "error", sizeof("error") - 1, message);
-#else
-	zend_update_property_long(Z_OBJCE_P(this->zend_this), this->zend_this, "errno", sizeof("errno") - 1, code);
-	zend_update_property_string(Z_OBJCE_P(this->zend_this), this->zend_this, "error", sizeof("error") - 1, message);
-#endif
+	zend_update_property_long(this->zend_ce, this->zend_this, "errno", sizeof("errno") - 1, code);
+	zend_update_property_string(this->zend_ce, this->zend_this, "error", sizeof("error") - 1, message);
+}
+
+void ClickHouse::set_affected_rows(zend_long value) const
+{
+	zend_update_property_long(this->zend_ce, this->zend_this, "affected_rows", sizeof("affected_rows") - 1, value);
+}
+
+void ClickHouse::set_num_rows(zend_long value) const
+{
+	zend_update_property_long(this->zend_ce, this->zend_this, "num_rows", sizeof("num_rows") - 1, value);
 }
