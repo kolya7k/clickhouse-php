@@ -1,5 +1,7 @@
 #include "ClickHouseResult.h"
 
+#include "util.h"
+
 ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count):
 	zend_this(zend_this), blocks(move(blocks)), next_row(0)
 {
@@ -62,14 +64,18 @@ bool ClickHouseResult::fetch(zval *row, FetchType type)
 			switch (type)
 			{
 				case FetchType::ASSOC:
-					this->add_type(row, block[i], block.GetColumnName(i));
+					if (!this->add_type(row, block[i], block.GetColumnName(i)))
+						return false;
 					break;
 				case FetchType::NUM:
-					this->add_type(row, block[i], "");
+					if (!this->add_type(row, block[i], ""))
+						return false;
 					break;
 				case FetchType::BOTH:
-					this->add_type(row, block[i], "");
-					this->add_type(row, block[i], block.GetColumnName(i));
+					if (!this->add_type(row, block[i], ""))
+						return false;
+					if (!this->add_type(row, block[i], block.GetColumnName(i)))
+						return false;
 					break;
 			}
 		}
@@ -86,7 +92,7 @@ bool ClickHouseResult::fetch(zval *row, FetchType type)
 	}
 }
 
-void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string &name) const
+bool ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string &name) const
 {
 	Type::Code type_code = column->Type()->GetCode();
 
@@ -137,8 +143,7 @@ void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 			break;
 //		case Type::Code::Array:
 		case Type::Code::Nullable:
-			this->add_null(row, column, name);
-			break;
+			return this->add_null(row, column, name);
 //		case Type::Code::Tuple:
 //		case Type::Code::Enum8:
 //		case Type::Code::Enum16:
@@ -146,17 +151,24 @@ void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 //		case Type::Code::IPv4:
 //		case Type::Code::IPv6:
 //		case Type::Code::Int128:
-//		case Type::Code::Decimal:
-//		case Type::Code::Decimal32:
-//		case Type::Code::Decimal64:
-//		case Type::Code::Decimal128:
+		case Type::Code::Decimal:
+		case Type::Code::Decimal32:
+		case Type::Code::Decimal64:
+		case Type::Code::Decimal128:
+		{
+			this->add_decimal(row, column, name);
+			break;
+		}
 //		case Type::Code::LowCardinality:
 		default:
-			zend_error_noreturn(E_WARNING, "Type %d is unsupported", type_code);
+			zend_error(E_WARNING, "Type %d is unsupported", type_code);
+			return false;
 	}
+
+	return true;
 }
 
-void ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string &name) const
+bool ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string &name) const
 {
 	auto value = column->As<ColumnNullable>();
 
@@ -166,10 +178,32 @@ void ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string
 			add_assoc_null_ex(row, name.c_str(), name.length());
 		else
 			add_next_index_null(row);
-		return;
+		return true;
 	}
 
-	this->add_type(row, value->Nested(), name);
+	return this->add_type(row, value->Nested(), name);
+}
+
+void ClickHouseResult::add_decimal(zval *row, const ColumnRef &column, const string &name) const
+{
+	auto decimal_column = column->As<ColumnDecimal>();
+
+	Int128 value = decimal_column->At(this->next_row);
+
+	string text_value = int128_to_string(value);
+
+	DecimalType *type_decimal = reinterpret_cast<DecimalType*>(decimal_column->Type().get());
+
+	size_t scale = type_decimal->GetScale();
+	if (scale != 0)
+		text_value.insert(text_value.length() - scale, ".");
+
+	if (!name.empty())
+		add_assoc_stringl_ex(row, name.c_str(), name.length(), text_value.data(), text_value.length());
+	else
+		add_next_index_stringl(row, text_value.data(), text_value.length());
+
+//	php_printf("value = %lu, scale = %ld, text_value = '%s', text_value length = %lu\n", static_cast<uint64_t>(value), scale, text_value.c_str(), text_value.length());
 }
 
 ClickHouseResult::FetchType ClickHouseResult::get_fetch_type(zend_long resulttype)

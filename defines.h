@@ -33,5 +33,4 @@ using std::pair;
 
 using namespace clickhouse;
 
-#include "util.h"
 #include "php_clickhouse.h"

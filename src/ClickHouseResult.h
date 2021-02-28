@@ -21,7 +21,7 @@ private:
 
 	[[nodiscard]] bool fetch(zval *row, FetchType type);
 
-	void add_type(zval *row, const ColumnRef &column, const string &name) const;
+	[[nodiscard]] bool add_type(zval *row, const ColumnRef &column, const string &name) const;
 
 	template<class T>
 	void add_long(zval *row, const ColumnRef &column, const string &name) const;
@@ -35,7 +35,9 @@ private:
 	template<class T>
 	void add_date(zval *row, const ColumnRef &column, const string &name) const;
 
-	void add_null(zval *row, const ColumnRef &column, const string &name) const;
+	[[nodiscard]] bool add_null(zval *row, const ColumnRef &column, const string &name) const;
+
+	void add_decimal(zval *row, const ColumnRef &column, const string &name) const;
 
 	void set_num_rows(zend_long value) const;
 
