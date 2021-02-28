@@ -6,9 +6,14 @@ Supports PHP 7.0+
 
 Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp) library
 
+## Dependencies
+* PHP 7.0+
+* [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp)
+
 ## Building
 
-Install [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp) first
+Install [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp)
+
 Then do
 
 ```sh
