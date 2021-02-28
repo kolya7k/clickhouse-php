@@ -1,6 +1,7 @@
 # ClickHouse PHP extension
 
 PHP extension for [Yandex ClickHouse](https://clickhouse.yandex/)
+
 Supports PHP 7.0+
 
 Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-cpp) library
