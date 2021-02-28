@@ -432,7 +432,7 @@ bool ClickHouse::add_by_type(Block &block, zend_string *name, zend_ulong index, 
 		{
 			auto column = description_column->As<ColumnFixedString>();
 
-			if (php_type != IS_NULL && Z_STRLEN_P(z_value) >= column->FixedSize())
+			if (php_type != IS_NULL && column->FixedSize() < Z_STRLEN_P(z_value))
 			{
 				zend_error(E_WARNING, "FixedString column max size %lu < value size %lu", column->FixedSize(), Z_STRLEN_P(z_value));
 				return false;
