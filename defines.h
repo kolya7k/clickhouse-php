@@ -1,5 +1,8 @@
 #pragma once
 
+#define DATE_FORMAT		"%Y-%m-%d"
+#define DATETIME_FORMAT		"%Y-%m-%d %H:%M:%S"
+
 #include <cinttypes>
 #include <cstring>
 #include <ctime>

@@ -29,10 +29,12 @@ private:
 	template<class T>
 	void add_float(zval *row, const ColumnRef &column, const string &name) const;
 
+	template<class T>
 	void add_string(zval *row, const ColumnRef &column, const string &name) const;
-	void add_fixed_string(zval *row, const ColumnRef &column, const string &name) const;
-	void add_datetime(zval *row, const ColumnRef &column, const string &name) const;
+
+	template<class T>
 	void add_date(zval *row, const ColumnRef &column, const string &name) const;
+
 	void add_null(zval *row, const ColumnRef &column, const string &name) const;
 
 	void set_num_rows(zend_long value) const;
@@ -74,4 +76,35 @@ void ClickHouseResult::add_float(zval *row, const ColumnRef &column, const strin
 		add_assoc_double_ex(row, name.c_str(), name.length(), value);
 	else
 		add_next_index_double(row, value);
+}
+
+
+template<class T>
+void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const string &name) const
+{
+	string_view value = column->As<T>()->At(this->next_row);
+
+	if (!name.empty())
+		add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), value.length());
+	else
+		add_next_index_stringl(row, value.data(), value.length());
+}
+
+template<class T>
+void ClickHouseResult::add_date(zval *row, const ColumnRef &column, const string &name) const
+{
+	time_t value = column->As<T>()->At(this->next_row);
+
+	tm tm_time{};
+	localtime_r(&value, &tm_time);
+
+	char buffer[20];		//2020-01-01 00:00:00 + \0
+	size_t writed = strftime(buffer, sizeof(buffer), std::is_same<T, ColumnDate>{} ? DATE_FORMAT : DATETIME_FORMAT, &tm_time);
+	if (writed == 0)
+		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
+
+	if (!name.empty())
+		add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
+	else
+		add_next_index_stringl(row, buffer, writed);
 }

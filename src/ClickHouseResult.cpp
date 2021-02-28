@@ -124,16 +124,16 @@ void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 			this->add_float<double>(row, column, name);
 			break;
 		case Type::Code::String:
-			this->add_string(row, column, name);
+			this->add_string<ColumnString>(row, column, name);
 			break;
 		case Type::Code::FixedString:
-			this->add_fixed_string(row, column, name);
+			this->add_string<ColumnFixedString>(row, column, name);
 			break;
 		case Type::Code::DateTime:
-			this->add_datetime(row, column, name);
+			this->add_date<ColumnDateTime>(row, column, name);
 			break;
 		case Type::Code::Date:
-			this->add_date(row, column, name);
+			this->add_date<ColumnDate>(row, column, name);
 			break;
 //		case Type::Code::Array:
 		case Type::Code::Nullable:
@@ -154,63 +154,6 @@ void ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 		default:
 			zend_error_noreturn(E_WARNING, "Type %d is unsupported", type_code);
 	}
-}
-
-void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const string &name) const
-{
-	string_view value = column->As<ColumnString>()->At(this->next_row);
-
-	if (!name.empty())
-		add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), value.length());
-	else
-		add_next_index_stringl(row, value.data(), value.length());
-}
-
-void ClickHouseResult::add_fixed_string(zval *row, const ColumnRef &column, const string &name) const
-{
-	auto fixed_string = column->As<ColumnFixedString>();
-	string_view value = fixed_string->At(this->next_row);
-
-	if (!name.empty())
-		add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), fixed_string->FixedSize());
-	else
-		add_next_index_stringl(row, value.data(), fixed_string->FixedSize());
-}
-
-void ClickHouseResult::add_datetime(zval *row, const ColumnRef &column, const string &name) const
-{
-	time_t value = static_cast<time_t>(column->As<ColumnDateTime>()->At(this->next_row));
-
-	tm tm_time{};
-	localtime_r(&value, &tm_time);
-
-	char buffer[20];		//2020-01-01 00:00:00 + \0
-	size_t writed = strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm_time);
-	if (writed == 0)
-		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
-
-	if (!name.empty())
-		add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
-	else
-		add_next_index_stringl(row, buffer, writed);
-}
-
-void ClickHouseResult::add_date(zval *row, const ColumnRef &column, const string &name) const
-{
-	time_t value = column->As<ColumnDate>()->At(this->next_row);
-
-	tm tm_time{};
-	localtime_r(&value, &tm_time);
-
-	char buffer[11];		//2020-01-01 + \0
-	size_t writed = strftime(buffer, sizeof(buffer), "%Y-%m-%d", &tm_time);
-	if (writed == 0)
-		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
-
-	if (!name.empty())
-		add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
-	else
-		add_next_index_stringl(row, buffer, writed);
 }
 
 void ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string &name) const

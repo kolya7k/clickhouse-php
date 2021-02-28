@@ -63,8 +63,8 @@ $ make install
 		toUInt64(-1),
 		toUInt64(18446744073709551615),
 		toUInt64(9223372036854775807),
-		toFloat64(1 / 3),
 		toFloat32(1 / 3),
+		toFloat64(1 / 3),
 		toFixedString('test', 8),
 		toString('test'),
 		toDate('2021-01-01'),
@@ -75,28 +75,42 @@ $ make install
 		NULL
 	") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_ERROR);
 
-	while ($row = $result->fetch_assoc())
-		print_r($row);
+	$row = $result->fetch_assoc();
+	var_dump($row);
 
-	$ch->query("CREATE TABLE IF NOT EXISTS numbers (id UInt64, name String, value FixedString(5)) ENGINE = Memory") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
+	$ch->query("CREATE TABLE IF NOT EXISTS numbers (
+		id UInt64,
+		name String,
+		key FixedString(5),
+		nullable Nullable(Date)
+	) ENGINE = Memory") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
+	// Index-based data
 	$ch->insert("numbers",
 		array(
-			[1, "a", "aa"],
-			[2, "b", "bb"],
-			[3, "c", "cc"]
+			array(1, "a", "aa", "2020-01-01"),
+			array(2, "b", "bb", NULL),
+			array(3, "c", "cc", "2020-01-03")
 		),
-		array("UInt32", "String", "FixedString(5)"),				// Types information needed by ClicKHouse API
-		array("id", "name", "key")						// Columns names in separated array
+
+		// Types information needed by ClicKHouse API
+		array("UInt64", "String", "FixedString(5)", "Nullable(Date)"),
+
+		// Columns names in separated array
+		array("id", "name", "key", "nullable")
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
+	// Associative array data, slower than index-based
 	$ch->insert("numbers",
 		array(
-			['id' => 4, 'name' => "d", 'key' => "dd"],			// Columns names inside data array
-			['id' => 5, 'name' => "e", 'key' => "ee"],
-			['id' => 6, 'name' => "f", 'key' => "ff"]
+			// Columns names inside data array
+			array('id' => 4, 'name' => "d", 'key' => "dd", 'nullable' => "2020-01-04"),
+			array('id' => 5, 'name' => "e", 'key' => "ee", 'nullable' => NULL),
+			array('id' => 6, 'name' => "f", 'key' => "ff", 'nullable' => "2020-01-06")
 		),
-		array('id' => "UInt32", 'name' => "String", 'key' => "FixedString(5)")	// Types information needed by ClicKHouse API
+
+		// Types information needed by ClicKHouse API
+		array('id' => "UInt64", 'name' => "String", 'key' => "FixedString(5)", 'nullable' => "Nullable(Date)")
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	$result = $ch->query("SELECT * FROM numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);

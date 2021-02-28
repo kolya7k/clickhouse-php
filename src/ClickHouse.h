@@ -22,30 +22,22 @@ private:
 
 	static const unordered_map<string, Type::Code> types_names;
 
-	template<class T>
-	static void add_long(Block &block, zend_string *name, zend_ulong index, zend_long value);
+	template<class T, class V>
+	static void add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null);
 
-	template<class T>
-	static void add_float(Block &block, zend_string *name, zend_ulong index, double value);
-
-	template<class T>
-	static void add_null(Block &block, zend_string *name, zend_ulong index);
-
-	static void add_null_fixed(Block &block, zend_string *name, zend_ulong index, zend_long size);
-
-	static void add_string(Block &block, zend_string *name, zend_ulong index, const string_view &value);
-	static void add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value, zend_long size);
-
-	static void add_date(Block &block, zend_string *name, zend_ulong index, time_t time);
-	static void add_datetime(Block &block, zend_string *name, zend_ulong index, time_t time);
+	static void add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null);
 
 	[[nodiscard]] static bool parse_types(zend_array *types, vector<pair<Type::Code, string>> &data);
 	[[nodiscard]] static bool parse_fields(zend_array *fields, vector<zend_string*> &data);
 
-	[[nodiscard]] static bool parse_type(zval *val, string &type, string &param);
+	[[nodiscard]] static bool parse_type(const string &text, string &type, string &param);
+
 	[[nodiscard]] static Type::Code get_type(zend_array *types, zend_string *type, string &param);
-	[[nodiscard]] static Type::Code get_type(zval *type_val, string &param);
+	[[nodiscard]] static Type::Code get_type(const string &text, string &param);
+
 	[[nodiscard]] static zend_ulong get_column_index(zend_array *names, zend_string *name);
+
+	[[nodiscard]] static bool add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, Type::Code type, const string &type_param, bool nullable = false);
 
 public:
 	explicit ClickHouse(zend_object *zend_this);
@@ -56,34 +48,29 @@ public:
 	[[nodiscard]] bool insert(const string &table_name, zend_array *values, zend_array *types, zend_array *fields);
 };
 
-template<class T>
-void ClickHouse::add_long(Block &block, zend_string *name, zend_ulong index, zend_long value)
-{
-	if (block.GetColumnCount() <= index)
-		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<T>());
-
-	block[index]->As<T>()->Append(value);
-}
-
-template<class T>
-void ClickHouse::add_float(Block &block, zend_string *name, zend_ulong index, double value)
-{
-	if (block.GetColumnCount() <= index)
-		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<T>());
-
-	block[index]->As<T>()->Append(value);
-}
-
-template<class T>
-void ClickHouse::add_null(Block &block, zend_string *name, zend_ulong index)
+template<class T, class V>
+void ClickHouse::add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null)
 {
 	if (block.GetColumnCount() <= index)
 	{
-		auto nested = make_shared<T>();
-		auto nulls = make_shared<ColumnUInt8>();
+		if (nullable)
+		{
+			auto nested = make_shared<T>();
+			auto nulls = make_shared<ColumnUInt8>();
 
-		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnNullable>(nested, nulls));
+			block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnNullable>(nested, nulls));
+		}
+		else
+			block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<T>());
 	}
 
-	block[index]->As<ColumnNullable>()->Append(true);
+	if (nullable)
+	{
+		auto column = block[index]->As<ColumnNullable>();
+
+		column->Nested()->As<T>()->Append(value);
+		column->Nulls()->As<ColumnUInt8>()->Append(is_null ? 1 : 0);
+	}
+	else
+		block[index]->As<T>()->Append(value);
 }
