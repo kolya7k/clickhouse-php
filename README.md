@@ -32,6 +32,7 @@ $ make install
 * FixedString
 * DateTime
 * Date
+* Nullable for all previous types
 
 ## Limitations and differnce from mysqli
 * No MYSQLI_USE_RESULT logic, all data loaded into memory before using it in PHP code
@@ -82,35 +83,36 @@ $ make install
 		id UInt64,
 		name String,
 		key FixedString(5),
-		nullable Nullable(Date)
+		nullable_date Nullable(Date),
+		nullable_fixed Nullable(FixedString(15))
 	) ENGINE = Memory") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	// Index-based data
 	$ch->insert("numbers",
 		array(
-			array(1, "a", "aa", "2020-01-01"),
-			array(2, "b", "bb", NULL),
-			array(3, "c", "cc", "2020-01-03")
+			array(1, "a", "aa", "2020-01-01", "test1"),
+			array(2, "b", "bb", NULL, "test2"),
+			array(3, "c", "cc", "2020-01-03", NULL)
 		),
 
 		// Types information needed by ClicKHouse API
-		array("UInt64", "String", "FixedString(5)", "Nullable(Date)"),
+		array("UInt64", "String", "FixedString(5)", "Nullable(Date)", "Nullable(FixedString(15))"),
 
 		// Columns names in separated array
-		array("id", "name", "key", "nullable")
+		array("id", "name", "key", "nullable_date", "nullable_fixed")
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	// Associative array data, slower than index-based
 	$ch->insert("numbers",
 		array(
 			// Columns names inside data array
-			array('id' => 4, 'name' => "d", 'key' => "dd", 'nullable' => "2020-01-04"),
-			array('id' => 5, 'name' => "e", 'key' => "ee", 'nullable' => NULL),
-			array('id' => 6, 'name' => "f", 'key' => "ff", 'nullable' => "2020-01-06")
+			array('id' => 4, 'name' => "d", 'key' => "dd", 'nullable_date' => "2020-01-04",	'nullable_fixed' => NULL),
+			array('id' => 5, 'name' => "e", 'key' => "ee", 'nullable_date' => NULL,		'nullable_fixed' => "test5"),
+			array('id' => 6, 'name' => "f", 'key' => "ff", 'nullable_date' => "2020-01-06",	'nullable_fixed' => "test6")
 		),
 
 		// Types information needed by ClicKHouse API
-		array('id' => "UInt64", 'name' => "String", 'key' => "FixedString(5)", 'nullable' => "Nullable(Date)")
+		array('id' => "UInt64", 'name' => "String", 'key' => "FixedString(5)", 'nullable_date' => "Nullable(Date)", 'nullable_fixed' => "Nullable(FixedString(15))")
 	) or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
 
 	$result = $ch->query("SELECT * FROM numbers") or trigger_error("Failed to run query: ".$ch->error." (".$ch->errno.")", E_USER_WARNING);
