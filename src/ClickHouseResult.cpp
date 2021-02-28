@@ -1,8 +1,10 @@
 #include "ClickHouseResult.h"
 
-ClickHouseResult::ClickHouseResult(blocks_t &blocks):
-	blocks(move(blocks)), next_row(0)
-{}
+ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count):
+	zend_this(zend_this), blocks(move(blocks)), next_row(0)
+{
+	this->set_num_rows(rows_count);
+}
 
 bool ClickHouseResult::fetch_assoc(zval *row)
 {
@@ -240,4 +242,16 @@ ClickHouseResult::FetchType ClickHouseResult::get_fetch_type(zend_long resulttyp
 
 	zend_error(E_WARNING, "Unknown fetch type %lu, CLICKHOUSE_ASSOC, CLICKHOUSE_NUM or CLICKHOUSE_BOTH are supported", resulttype);
 	return ClickHouseResult::FetchType::BOTH;
+}
+
+void ClickHouseResult::set_num_rows(zend_long value) const
+{
+#if PHP_API_VERSION >= 20200930
+	zend_update_property_long(zend_this->ce, zend_this, "num_rows", sizeof("num_rows") - 1, value);
+#else
+	zval zv;
+	ZVAL_OBJ(&zv, zend_this);
+
+	zend_update_property_long(zend_this->ce, &zv, "num_rows", sizeof("num_rows") - 1, value);
+#endif
 }

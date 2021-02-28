@@ -33,38 +33,52 @@ const unordered_map<string, Type::Code> ClickHouse::types_names
 //	{"LowCardinality", Type::Code::LowCardinality}
 };
 
-ClickHouse::ClickHouse(zval *zend_this, zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port)
+__inline static zend_object* clickhouse_result_new(deque<Block> blocks, size_t rows_count)
 {
-#if PHP_API_VERSION >= 20200930
-	this->zend_ce = Z_OBJCE_P(zend_this);
-	this->zend_this = Z_OBJ_P(zend_this);
-#else
-	this->zend_ce = Z_OBJCE_P(zend_this);
-	this->zend_this = zend_this;
-#endif
+	ClickHouseResultObject *obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
 
-	if (host != nullptr)
-		this->host = string(ZSTR_VAL(host), ZSTR_LEN(host));
-	if (username != nullptr)
-		this->username = string(ZSTR_VAL(username), ZSTR_LEN(username));
-	if (passwd != nullptr)
-		this->passwd = string(ZSTR_VAL(passwd), ZSTR_LEN(passwd));
-	if (dbname != nullptr)
-		this->dbname = string(ZSTR_VAL(dbname), ZSTR_LEN(dbname));
-	if (port != 0)
-		this->port = port;
+	zend_object_std_init(&obj->std, clickhouse_result_class_entry);
+	object_properties_init(&obj->std, clickhouse_result_class_entry);
 
-//	zend_printf("ClickHouse host '%s', username '%s', passwd '%s', dbname '%s', port %u\n", this->host.c_str(), this->username.c_str(), this->passwd.c_str(), this->dbname.c_str(), this->port);
+	obj->std.handlers = &clickhouse_object_result_handlers;
+
+	obj->impl = new ClickHouseResult(&obj->std, move(blocks), rows_count);
+
+	return &obj->std;
 }
 
-void ClickHouse::connect()
+ClickHouse::ClickHouse(zend_object *zend_this):
+	zend_this(zend_this)
+{}
+
+void ClickHouse::connect(zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port)
 {
 	ClientOptions options;
-	options.SetHost(this->host);
-	options.SetUser(this->username);
-	options.SetPassword(this->passwd);
-	options.SetDefaultDatabase(this->dbname);
-	options.SetPort(this->port);
+	if (host != nullptr)
+		options.SetHost(string(ZSTR_VAL(host), ZSTR_LEN(host)));
+	else
+		options.SetHost(DEFAULT_HOST);
+
+	if (username != nullptr)
+		options.SetUser(string(ZSTR_VAL(username), ZSTR_LEN(username)));
+	else
+		options.SetUser(DEFAULT_USERNAME);
+
+	if (passwd != nullptr)
+		options.SetPassword(string(ZSTR_VAL(passwd), ZSTR_LEN(passwd)));
+	else
+		options.SetPassword(DEFAULT_PASSWD);
+
+	if (dbname != nullptr)
+		options.SetDefaultDatabase(string(ZSTR_VAL(dbname), ZSTR_LEN(dbname)));
+	else
+		options.SetDefaultDatabase(DEFAULT_DBNAME);
+
+	if (port != 0)
+		options.SetPort(port);
+	else
+		options.SetPort(DEFAULT_PORT);
+
 	options.SetCompressionMethod(CompressionMethod::LZ4);
 
 	try
@@ -78,15 +92,18 @@ void ClickHouse::connect()
 	}
 }
 
-ClickHouseResult* ClickHouse::query(const string &query, bool &success)
+zend_object* ClickHouse::query(const string &query, bool &success)
 {
+	this->set_error(0, "");
+	this->set_affected_rows(0);
+
 	if (!this->is_connected())
 		return nullptr;
 
-	ClickHouseResult::blocks_t blocks;
-
+	deque<Block> blocks;
 	zend_long rows_count = 0;
 	bool has_data = false;
+
 	try
 	{
 		Query ch_query(query);
@@ -106,164 +123,26 @@ ClickHouseResult* ClickHouse::query(const string &query, bool &success)
 	}
 	catch (ServerException &e)
 	{
-		this->set_error(e.GetCode(), e.what());
-		this->set_num_rows(0);
-		this->set_affected_rows(-1);
-
 		success = false;
+		this->set_error(e.GetCode(), e.what());
+		this->set_affected_rows(-1);
 		return nullptr;
 	}
-
-	this->set_num_rows(rows_count);
-	this->set_affected_rows(rows_count);
 
 	success = true;
 
 	if (!has_data)
 		return nullptr;
 
-	return new ClickHouseResult(blocks);
-}
+	this->set_affected_rows(rows_count);
 
-bool ClickHouse::parse_fields(zend_array *fields, vector<zend_string*> &data)
-{
-	Bucket *bucket;
-	ZEND_HASH_FOREACH_BUCKET(fields, bucket)
-	{
-		if (bucket->key != nullptr)
-		{
-			zend_error(E_WARNING, "Field key must be number but got string '%s'", ZSTR_VAL(bucket->key));
-			return false;
-		}
-
-		if (Z_TYPE(bucket->val) != IS_STRING)
-		{
-			zend_error(E_WARNING, "Field must be string but got type %d", Z_TYPE(bucket->val));
-			return false;
-		}
-
-		if (bucket->h != data.size())
-		{
-			zend_error(E_WARNING, "Field keys must go continuously in ascending order, key %lu received but %lu expected", bucket->h, data.size());
-			return false;
-		}
-
-		data.push_back(Z_STR(bucket->val));
-	}
-	ZEND_HASH_FOREACH_END();
-
-	return true;
-}
-
-bool ClickHouse::parse_types(zend_array *types, vector<Type::Code> &data)
-{
-	Bucket *bucket;
-	ZEND_HASH_FOREACH_BUCKET(types, bucket)
-	{
-		if (bucket->key != nullptr)
-		{
-			zend_error(E_WARNING, "Type key must be number but got string '%s'", ZSTR_VAL(bucket->key));
-			return false;
-		}
-
-		if (Z_TYPE(bucket->val) != IS_STRING)
-		{
-			zend_error(E_WARNING, "Type must be string but got type %d", Z_TYPE(bucket->val));
-			return false;
-		}
-
-		if (bucket->h != data.size())
-		{
-			zend_error(E_WARNING, "Type keys must go continuously in ascending order, key %lu received but %lu expected", bucket->h, data.size());
-			return false;
-		}
-
-		string type(Z_STRVAL(bucket->val), Z_STRLEN(bucket->val));
-
-		auto iter = ClickHouse::types_names.find(type);
-		if (iter == ClickHouse::types_names.end())
-		{
-			zend_error(E_WARNING, "Type '%s' is unsupported", type.c_str());
-			return false;
-		}
-
-		data.push_back(iter->second);
-	}
-	ZEND_HASH_FOREACH_END();
-
-	return true;
-}
-
-Type::Code ClickHouse::get_type(zend_array *types, zend_string *name)
-{
-	zval *type_val = zend_hash_find(types, name);
-	if (type_val == nullptr)
-	{
-		zend_error(E_WARNING, "Type for column '%s' not found", ZSTR_VAL(name));
-		return static_cast<Type::Code>(-1);
-	}
-
-	string type(Z_STRVAL_P(type_val), Z_STRLEN_P(type_val));
-
-	auto iter = ClickHouse::types_names.find(type);
-	if (iter == ClickHouse::types_names.end())
-	{
-		zend_error(E_WARNING, "Unsupported type '%s'", type.c_str());
-		return static_cast<Type::Code>(-1);
-	}
-
-	return iter->second;
-}
-
-zend_ulong ClickHouse::get_column_index(zend_array *names, zend_string *name)
-{
-	zval *index_val = zend_hash_find(names, name);
-	if (index_val != nullptr)
-		return Z_LVAL_P(index_val);
-
-	zend_ulong index = zend_hash_num_elements(names);
-
-	zval tmp;
-	ZVAL_LONG(&tmp, index);
-
-	zend_hash_add(names, name, &tmp);
-	return index;
-}
-
-void ClickHouse::add_string(Block &block, zend_string *name, zend_ulong index, const string_view &value)
-{
-	if (block.GetColumnCount() <= index)
-		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnString>());
-
-	block[index]->As<ColumnString>()->Append(value);
-}
-
-void ClickHouse::add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value)
-{
-	if (block.GetColumnCount() <= index)
-		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnFixedString>(value.length()));
-
-	block[index]->As<ColumnFixedString>()->Append(value);
-}
-
-void ClickHouse::add_date(Block &block, zend_string *name, zend_ulong index, time_t time)
-{
-	if (block.GetColumnCount() <= index)
-		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnDate>());
-
-	block[index]->As<ColumnDate>()->Append(time);
-}
-
-void ClickHouse::add_datetime(Block &block, zend_string *name, zend_ulong index, time_t time)
-{
-	if (block.GetColumnCount() <= index)
-		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnDateTime>());
-
-	block[index]->As<ColumnDateTime>()->Append(time);
+	return clickhouse_result_new(move(blocks), rows_count);
 }
 
 bool ClickHouse::insert(const string &table_name, zend_array *values, zend_array *types, zend_array *fields)
 {
+	this->set_error(0, "");
+
 	if (!this->is_connected())
 		return false;
 
@@ -298,6 +177,7 @@ bool ClickHouse::insert(const string &table_name, zend_array *values, zend_array
 
 	bool value_found = false;
 	bool numeric_keys = false;
+	zend_long rows = 0;
 
 	Bucket *values_bucket;
 	ZEND_HASH_FOREACH_BUCKET(values, values_bucket)
@@ -315,6 +195,8 @@ bool ClickHouse::insert(const string &table_name, zend_array *values, zend_array
 			zend_array_destroy(Z_ARR(column_names));
 			return false;
 		}
+
+		rows++;
 
 		Bucket *value_bucket;
 		ZEND_HASH_FOREACH_BUCKET(Z_ARR(values_bucket->val), value_bucket)
@@ -592,11 +474,11 @@ bool ClickHouse::insert(const string &table_name, zend_array *values, zend_array
 	catch (ServerException &e)
 	{
 		this->set_error(e.GetCode(), e.what());
-		this->set_num_rows(0);
 		this->set_affected_rows(-1);
 		return false;
 	}
 
+	this->set_affected_rows(rows);
 	return true;
 }
 
@@ -611,16 +493,163 @@ bool ClickHouse::is_connected() const
 
 void ClickHouse::set_error(zend_long code, const char *message) const
 {
-	zend_update_property_long(this->zend_ce, this->zend_this, "errno", sizeof("errno") - 1, code);
-	zend_update_property_string(this->zend_ce, this->zend_this, "error", sizeof("error") - 1, message);
+#if PHP_API_VERSION >= 20200930
+	zend_update_property_long(zend_this->ce, this->zend_this, "errno", sizeof("errno") - 1, code);
+	zend_update_property_string(zend_this->ce, this->zend_this, "error", sizeof("error") - 1, message);
+#else
+	zval zv;
+	ZVAL_OBJ(&zv, zend_this);
+
+	zend_update_property_long(zend_this->ce, &zv, "errno", sizeof("errno") - 1, code);
+	zend_update_property_string(zend_this->ce, &zv, "error", sizeof("error") - 1, message);
+#endif
 }
 
 void ClickHouse::set_affected_rows(zend_long value) const
 {
-	zend_update_property_long(this->zend_ce, this->zend_this, "affected_rows", sizeof("affected_rows") - 1, value);
+#if PHP_API_VERSION >= 20200930
+	zend_update_property_long(zend_this->ce, zend_this, "affected_rows", sizeof("affected_rows") - 1, value);
+#else
+	zval zv;
+	ZVAL_OBJ(&zv, zend_this);
+
+	zend_update_property_long(zend_this->ce, &zv, "affected_rows", sizeof("affected_rows") - 1, value);
+#endif
 }
 
-void ClickHouse::set_num_rows(zend_long value) const
+bool ClickHouse::parse_fields(zend_array *fields, vector<zend_string*> &data)
 {
-	zend_update_property_long(this->zend_ce, this->zend_this, "num_rows", sizeof("num_rows") - 1, value);
+	Bucket *bucket;
+	ZEND_HASH_FOREACH_BUCKET(fields, bucket)
+	{
+		if (bucket->key != nullptr)
+		{
+			zend_error(E_WARNING, "Field key must be number but got string '%s'", ZSTR_VAL(bucket->key));
+			return false;
+		}
+
+		if (Z_TYPE(bucket->val) != IS_STRING)
+		{
+			zend_error(E_WARNING, "Field must be string but got type %d", Z_TYPE(bucket->val));
+			return false;
+		}
+
+		if (bucket->h != data.size())
+		{
+			zend_error(E_WARNING, "Field keys must go continuously in ascending order, key %lu received but %lu expected", bucket->h, data.size());
+			return false;
+		}
+
+		data.push_back(Z_STR(bucket->val));
+	}
+	ZEND_HASH_FOREACH_END();
+
+	return true;
+}
+
+bool ClickHouse::parse_types(zend_array *types, vector<Type::Code> &data)
+{
+	Bucket *bucket;
+	ZEND_HASH_FOREACH_BUCKET(types, bucket)
+	{
+		if (bucket->key != nullptr)
+		{
+			zend_error(E_WARNING, "Type key must be number but got string '%s'", ZSTR_VAL(bucket->key));
+			return false;
+		}
+
+		if (Z_TYPE(bucket->val) != IS_STRING)
+		{
+			zend_error(E_WARNING, "Type must be string but got type %d", Z_TYPE(bucket->val));
+			return false;
+		}
+
+		if (bucket->h != data.size())
+		{
+			zend_error(E_WARNING, "Type keys must go continuously in ascending order, key %lu received but %lu expected", bucket->h, data.size());
+			return false;
+		}
+
+		string type(Z_STRVAL(bucket->val), Z_STRLEN(bucket->val));
+
+		auto iter = ClickHouse::types_names.find(type);
+		if (iter == ClickHouse::types_names.end())
+		{
+			zend_error(E_WARNING, "Type '%s' is unsupported", type.c_str());
+			return false;
+		}
+
+		data.push_back(iter->second);
+	}
+	ZEND_HASH_FOREACH_END();
+
+	return true;
+}
+
+Type::Code ClickHouse::get_type(zend_array *types, zend_string *name)
+{
+	zval *type_val = zend_hash_find(types, name);
+	if (type_val == nullptr)
+	{
+		zend_error(E_WARNING, "Type for column '%s' not found", ZSTR_VAL(name));
+		return static_cast<Type::Code>(-1);
+	}
+
+	string type(Z_STRVAL_P(type_val), Z_STRLEN_P(type_val));
+
+	auto iter = ClickHouse::types_names.find(type);
+	if (iter == ClickHouse::types_names.end())
+	{
+		zend_error(E_WARNING, "Unsupported type '%s'", type.c_str());
+		return static_cast<Type::Code>(-1);
+	}
+
+	return iter->second;
+}
+
+zend_ulong ClickHouse::get_column_index(zend_array *names, zend_string *name)
+{
+	zval *index_val = zend_hash_find(names, name);
+	if (index_val != nullptr)
+		return Z_LVAL_P(index_val);
+
+	zend_ulong index = zend_hash_num_elements(names);
+
+	zval tmp;
+	ZVAL_LONG(&tmp, index);
+
+	zend_hash_add(names, name, &tmp);
+	return index;
+}
+
+void ClickHouse::add_string(Block &block, zend_string *name, zend_ulong index, const string_view &value)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnString>());
+
+	block[index]->As<ColumnString>()->Append(value);
+}
+
+void ClickHouse::add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnFixedString>(value.length()));
+
+	block[index]->As<ColumnFixedString>()->Append(value);
+}
+
+void ClickHouse::add_date(Block &block, zend_string *name, zend_ulong index, time_t time)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnDate>());
+
+	block[index]->As<ColumnDate>()->Append(time);
+}
+
+void ClickHouse::add_datetime(Block &block, zend_string *name, zend_ulong index, time_t time)
+{
+	if (block.GetColumnCount() <= index)
+		block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnDateTime>());
+
+	block[index]->As<ColumnDateTime>()->Append(time);
 }

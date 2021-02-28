@@ -6,21 +6,9 @@
 
 static constexpr const char *MODULE_VERSION = "1.0.0";
 
-static zend_class_entry *clickhouse_class_entry = nullptr;
-static zend_class_entry *clickhouse_result_class_entry = nullptr;
-
-static zend_object_handlers clickhouse_object_handlers;
-static zend_object_handlers clickhouse_object_result_handlers;
-
 struct ClickHouseObject
 {
 	ClickHouse *impl;
-	zend_object std;
-};
-
-struct ClickHouseResultObject
-{
-	ClickHouseResult *impl;
 	zend_object std;
 };
 
@@ -39,19 +27,7 @@ __inline static zend_object* clickhouse_new(zend_class_entry *ce)
 
 	obj->std.handlers = &clickhouse_object_handlers;
 
-	return &obj->std;
-}
-
-__inline static zend_object* clickhouse_result_new(zend_class_entry *ce, ClickHouseResult *result)
-{
-	ClickHouseResultObject *obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), ce));
-
-	zend_object_std_init(&obj->std, ce);
-	object_properties_init(&obj->std, ce);
-
-	obj->std.handlers = &clickhouse_object_result_handlers;
-
-	obj->impl = result;
+	obj->impl = new ClickHouse(&obj->std);
 
 	return &obj->std;
 }
@@ -107,8 +83,7 @@ PHP_METHOD(ClickHouseObject, __construct)
 
 	ClickHouseObject *ch = Z_CLICKHOUSE_P(ZEND_THIS);
 
-	ch->impl = new ClickHouse(ZEND_THIS, host, username, passwd, dbname, port);
-	ch->impl->connect();
+	ch->impl->connect(host, username, passwd, dbname, port);
 }
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_destruct, 0, 0, 0)
@@ -143,8 +118,9 @@ PHP_METHOD(ClickHouseObject, query)
 
 	ClickHouseObject *obj = Z_CLICKHOUSE_P(ZEND_THIS);
 
-	bool success;
-	ClickHouseResult *result = obj->impl->query(string(ZSTR_VAL(query), ZSTR_LEN(query)), success);
+	bool success = false;
+
+	zend_object *result = obj->impl->query(string(ZSTR_VAL(query), ZSTR_LEN(query)), success);
 	if (result == nullptr)
 	{
 		if (success)
@@ -152,9 +128,7 @@ PHP_METHOD(ClickHouseObject, query)
 		RETURN_FALSE;
 	}
 
-	zend_object *result_obj = clickhouse_result_new(clickhouse_result_class_entry, result);
-
-	RETVAL_OBJ(result_obj);
+	RETVAL_OBJ(result);
 }
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_insert, 0, 0, 3)
@@ -241,7 +215,6 @@ PHP_METHOD(ClickHouseResultObject, fetch_array)
 		RETURN_FALSE;
 }
 
-
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_all, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, resulttype, IS_LONG, 0)
 ZEND_END_ARG_INFO()
@@ -300,7 +273,6 @@ PHP_MINIT_FUNCTION(clickhouse)
 	zend_declare_property_string(clickhouse_class_entry, "error", sizeof("error") - 1, "", ZEND_ACC_PUBLIC);
 
  	zend_declare_property_long(clickhouse_class_entry, "affected_rows", sizeof("affected_rows") - 1, 0, ZEND_ACC_PUBLIC);
- 	zend_declare_property_long(clickhouse_class_entry, "num_rows", sizeof("num_rows") - 1, 0, ZEND_ACC_PUBLIC);
 
 	// ClickHouseResult
 	zend_class_entry rce;
@@ -310,6 +282,8 @@ PHP_MINIT_FUNCTION(clickhouse)
 	memcpy(&clickhouse_object_result_handlers, &std_object_handlers, sizeof(zend_object_handlers));
 	clickhouse_object_result_handlers.offset = XtOffsetOf(ClickHouseResultObject, std);
 	clickhouse_object_result_handlers.free_obj = clickhouse_result_free;
+
+ 	zend_declare_property_long(clickhouse_result_class_entry, "num_rows", sizeof("num_rows") - 1, 0, ZEND_ACC_PUBLIC);
 
 	return SUCCESS;
 }

@@ -13,9 +13,9 @@ public:
 	};
 
 private:
-	typedef deque<Block> blocks_t;
+	zend_object *zend_this;
 
-	blocks_t blocks;
+	deque<Block> blocks;
 
 	size_t next_row;
 
@@ -35,8 +35,10 @@ private:
 	void add_date(zval *row, const ColumnRef &column, const string &name) const;
 	void add_null(zval *row, const ColumnRef &column, const string &name) const;
 
+	void set_num_rows(zend_long value) const;
+
 public:
-	explicit ClickHouseResult(blocks_t &blocks);
+	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count);
 
 	[[nodiscard]] bool fetch_assoc(zval *row);
 	[[nodiscard]] bool fetch_row(zval *row);
@@ -44,6 +46,12 @@ public:
 	[[nodiscard]] bool fetch_all(zval *rows, FetchType type);
 
 	[[nodiscard]] static FetchType get_fetch_type(zend_long resulttype);
+};
+
+struct ClickHouseResultObject
+{
+	ClickHouseResult *impl;
+	zend_object std;
 };
 
 template<class T>

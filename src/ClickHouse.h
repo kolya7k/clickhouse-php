@@ -11,13 +11,7 @@ private:
 	inline static const string DEFAULT_DBNAME = "default";
 	inline static const uint32_t DEFAULT_PORT = 9000;
 
-	zend_class_entry *zend_ce;
-
-#if PHP_API_VERSION >= 20200930
 	zend_object *zend_this;
-#else
-	zval *zend_this;
-#endif
 
 	shared_ptr<Client> client;
 
@@ -25,7 +19,6 @@ private:
 
 	void set_error(zend_long code, const char *message) const;
 	void set_affected_rows(zend_long value) const;
-	void set_num_rows(zend_long value) const;
 
 	static const unordered_map<string, Type::Code> types_names;
 
@@ -51,18 +44,12 @@ private:
 	static void add_datetime(Block &block, zend_string *name, zend_ulong index, time_t time);
 
 public:
-	string host = DEFAULT_HOST;
-	string username = DEFAULT_USERNAME;
-	string passwd = DEFAULT_PASSWD;
-	string dbname = DEFAULT_DBNAME;
-	uint32_t port = DEFAULT_PORT;
+	explicit ClickHouse(zend_object *zend_this);
 
-	ClickHouse(zval *zend_this, zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port);
+	void connect(zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port);
 
-	void connect();
-
-	ClickHouseResult* query(const string &query, bool &success);
-	bool insert(const string &table_name, zend_array *values, zend_array *types, zend_array *fields);
+	[[nodiscard]] zend_object* query(const string &query, bool &success);
+	[[nodiscard]] bool insert(const string &table_name, zend_array *values, zend_array *types, zend_array *fields);
 };
 
 template<class T>
