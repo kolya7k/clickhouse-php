@@ -1,7 +1,7 @@
 #include "ClickHouseResult.h"
 
-ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count):
-	zend_this(zend_this), blocks(move(blocks)), next_row(0)
+ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count, long int timezone_offset):
+	zend_this(zend_this), blocks(move(blocks)), next_row(0), timezone_offset(timezone_offset)
 {
 	this->set_num_rows(rows_count);
 }

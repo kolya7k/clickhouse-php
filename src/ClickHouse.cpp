@@ -1,6 +1,6 @@
 #include "ClickHouse.h"
 
-__inline static zend_object* clickhouse_result_new(deque<Block> blocks, size_t rows_count)
+__inline static zend_object* clickhouse_result_new(deque<Block> blocks, size_t rows_count, long int timezone_offset)
 {
 	ClickHouseResultObject *obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
 
@@ -9,14 +9,20 @@ __inline static zend_object* clickhouse_result_new(deque<Block> blocks, size_t r
 
 	obj->std.handlers = &clickhouse_object_result_handlers;
 
-	obj->impl = new ClickHouseResult(&obj->std, move(blocks), rows_count);
+	obj->impl = new ClickHouseResult(&obj->std, move(blocks), rows_count, timezone_offset);
 
 	return &obj->std;
 }
 
 ClickHouse::ClickHouse(zend_object *zend_this):
 	zend_this(zend_this)
-{}
+{
+	time_t value = 0;
+	tm tm_time{};
+	localtime_r(&value, &tm_time);
+
+	this->timezone_offset = tm_time.tm_gmtoff;
+}
 
 void ClickHouse::connect(zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port)
 {
@@ -116,7 +122,7 @@ zend_object* ClickHouse::query(const string &query, bool &success)
 
 	this->set_affected_rows(rows_count);
 
-	return clickhouse_result_new(move(blocks), rows_count);
+	return clickhouse_result_new(move(blocks), rows_count, this->timezone_offset);
 }
 
 bool ClickHouse::insert(const string &table_name, zend_array *values, zend_array *fields)

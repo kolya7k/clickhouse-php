@@ -15,6 +15,8 @@ private:
 
 	shared_ptr<Client> client;
 
+	long int timezone_offset;
+
 	[[nodiscard]] bool is_connected() const;
 
 	[[nodiscard]] bool do_insert(const string &table_name, zend_array *values, zend_array *fields);

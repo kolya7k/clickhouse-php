@@ -23,6 +23,7 @@ private:
 	deque<Block> blocks;
 
 	size_t next_row;
+	long int timezone_offset;
 
 	[[nodiscard]] bool fetch(zval *row, FetchType type);
 
@@ -47,7 +48,7 @@ private:
 	void set_num_rows(zend_long value) const;
 
 public:
-	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count);
+	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count, long int timezone_offset);
 
 	[[nodiscard]] bool fetch_assoc(zval *row);
 	[[nodiscard]] bool fetch_row(zval *row);
@@ -113,10 +114,10 @@ void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const stri
 template<class T>
 void ClickHouseResult::add_date(zval *row, const ColumnRef &column, const string &name) const
 {
-	time_t value = column->As<T>()->At(this->next_row);
+	time_t value = column->As<T>()->At(this->next_row) + this->timezone_offset;
 
 	tm tm_time{};
-	localtime_r(&value, &tm_time);
+	gmtime_r(&value, &tm_time);
 
 	char buffer[20];		//2020-01-01 00:00:00 + \0
 	size_t writed = strftime(buffer, sizeof(buffer), std::is_same<T, ColumnDate>{} ? DATE_FORMAT : DATETIME_FORMAT, &tm_time);
