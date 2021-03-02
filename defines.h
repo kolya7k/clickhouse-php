@@ -3,6 +3,8 @@
 #define DATE_FORMAT		"%Y-%m-%d"
 #define DATETIME_FORMAT		"%Y-%m-%d %H:%M:%S"
 
+#define WITH_INT128		0
+
 #include <cinttypes>
 #include <cstring>
 #include <ctime>

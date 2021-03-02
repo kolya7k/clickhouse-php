@@ -189,9 +189,7 @@ void ClickHouseResult::add_decimal(zval *row, const ColumnRef &column, const str
 {
 	auto decimal_column = column->As<ColumnDecimal>();
 
-	Int128 value = decimal_column->At(this->next_row);
-
-	string text_value = int128_to_string(value);
+	string text_value = std::to_string(decimal_column->At(this->next_row));
 
 	DecimalType *type_decimal = reinterpret_cast<DecimalType*>(decimal_column->Type().get());
 

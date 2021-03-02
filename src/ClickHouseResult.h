@@ -73,7 +73,7 @@ void ClickHouseResult::add_long(zval *row, const ColumnRef &column, const string
 #pragma GCC diagnostic ignored "-Wsign-compare"
 	if (value > PHP_INT_MAX || (!std::is_unsigned_v<decltype(value)> && value < PHP_INT_MIN))
 	{
-		string value_string = int128_to_string(value);
+		string value_string = std::to_string(value);
 
 		if (!name.empty())
 			add_assoc_stringl_ex(row, name.c_str(), name.length(), value_string.data(), value_string.length());

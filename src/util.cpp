@@ -2,8 +2,13 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
-string int128_to_string(__int128 value)
+
+namespace std
 {
+
+string to_string(__int128 value)
+{
+#if WITH_INT128 == 1
 	if (value == 0)
 		return string("0");
 
@@ -28,5 +33,11 @@ string int128_to_string(__int128 value)
 		*--end = '-';
 
 	return string(end);
+#else
+	return to_string(static_cast<uint64_t>(value));
+#endif
 }
+
+}
+
 #pragma GCC diagnostic pop
