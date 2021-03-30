@@ -12,8 +12,10 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 
 ## Building
 ```sh
+$ git submodule init
+$ git submodule update
 $ phpize && ./configure
-$ make
+$ make -j 16
 $ make install
 ```
 
