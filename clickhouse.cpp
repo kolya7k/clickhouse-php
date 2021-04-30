@@ -233,6 +233,10 @@ PHP_METHOD(ClickHouseResultObject, fetch_all)
 		RETURN_FALSE;
 }
 
+static const zend_function_entry extension_functions[] = {
+	PHP_FE_END
+};
+
 static const zend_function_entry clickhouse_functions[] = {
 	PHP_ME(ClickHouseObject, __construct, arginfo_clickhouse_construct, ZEND_ACC_PUBLIC)
 	PHP_ME(ClickHouseObject, __destruct, arginfo_clickhouse_destruct, ZEND_ACC_PUBLIC)
@@ -306,7 +310,7 @@ typedef void (*zend_ctor_type)(void*);
 zend_module_entry clickhouse_module_entry = {
 	STANDARD_MODULE_HEADER,
 	"clickhouse",							/* Extension name */
-	clickhouse_functions,							/* zend_function_entry */
+	extension_functions,							/* zend_function_entry */
 	PHP_MINIT(clickhouse),							/* PHP_MINIT - Module initialization */
 	nullptr,						/* PHP_MSHUTDOWN - Module shutdown */
 	PHP_RINIT(clickhouse),							/* PHP_RINIT - Request initialization */
