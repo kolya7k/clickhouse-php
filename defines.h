@@ -33,6 +33,13 @@ using std::pair;
 
 #include "php_clickhouse.h"
 
+#define ABSL_HAVE_INTRINSIC_INT128
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+
 #include "clickhouse/client.h"
+
+#pragma GCC diagnostic pop
 
 using namespace clickhouse;
