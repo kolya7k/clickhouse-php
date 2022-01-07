@@ -31,7 +31,12 @@ using std::make_shared;
 
 using std::pair;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+
 #include "php_clickhouse.h"
+
+#pragma GCC diagnostic pop
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
