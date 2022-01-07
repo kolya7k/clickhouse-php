@@ -3,6 +3,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #pragma GCC diagnostic ignored "-Wfloat-equal"
+#pragma GCC diagnostic ignored "-Wredundant-decls"
 #include <php.h>
 #include <ext/standard/info.h>
 #pragma GCC diagnostic pop
