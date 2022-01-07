@@ -20,12 +20,12 @@ if test "$PHP_CLICKHOUSE" != "no"; then
 		clickhouse-cpp/clickhouse/block.cpp \
 		clickhouse-cpp/clickhouse/client.cpp \
 		clickhouse-cpp/clickhouse/query.cpp \
-		clickhouse-cpp/clickhouse/base/coded.cpp \
 		clickhouse-cpp/clickhouse/base/compressed.cpp \
 		clickhouse-cpp/clickhouse/base/input.cpp \
 		clickhouse-cpp/clickhouse/base/output.cpp \
 		clickhouse-cpp/clickhouse/base/platform.cpp \
 		clickhouse-cpp/clickhouse/base/socket.cpp \
+		clickhouse-cpp/clickhouse/base/wire_format.cpp \
 		clickhouse-cpp/clickhouse/columns/array.cpp \
 		clickhouse-cpp/clickhouse/columns/date.cpp \
 		clickhouse-cpp/clickhouse/columns/decimal.cpp \
