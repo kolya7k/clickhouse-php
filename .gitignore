@@ -1,11 +1,6 @@
 syntax: glob
 secret.inc.php
 build
-.hg
-.hgrc
-.idea
-CMakeLists.txt
-test.php
 
 *.lo
 *.la

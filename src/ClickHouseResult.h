@@ -84,9 +84,9 @@ void ClickHouseResult::add_long(zval *row, const ColumnRef &column, const string
 #pragma GCC diagnostic pop
 
 	if (!name.empty())
-		add_assoc_long_ex(row, name.c_str(), name.length(), value);
+		add_assoc_long_ex(row, name.c_str(), name.length(), static_cast<zend_long>(value));
 	else
-		add_next_index_long(row, value);
+		add_next_index_long(row, static_cast<zend_long>(value));
 }
 
 template<class T>

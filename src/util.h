@@ -5,7 +5,7 @@
 
 namespace std
 {
-	string to_string(__int128 value);
+	string to_string(clickhouse::Int128 value);
 }
 
 #pragma GCC diagnostic pop

@@ -5,13 +5,13 @@ PHP_ARG_ENABLE([clickhouse],
 	[no]
 )
 
-if test "$PHP_CLICKHOUSE" != "no"; then
+if test "$CLICKHOUSE" != "no"; then
 	PHP_REQUIRE_CXX()
 	PHP_SUBST(CLICKHOUSE_SHARED_LIBADD)
 	PHP_ADD_LIBRARY(stdc++, 1, CLICKHOUSE_SHARED_LIBADD)
 
- 	CXXFLAGS="-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -std=gnu++20 -Wall -Wextra -Wdeprecated -Wno-unused-parameter -Wredundant-decls -Wlogical-op -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wdouble-promotion -Wno-unknown-pragmas -Wcast-qual -pedantic -pedantic-errors -fno-omit-frame-pointer -include defines.h"
-	LDFLAGS="-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -std=gnu++20 -Wl,--export-dynamic -fno-omit-frame-pointer"
+ 	CXXFLAGS="-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -std=gnu++2a -Wall -Wextra -Wdeprecated -Wno-unused-parameter -Wredundant-decls -Wlogical-op -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wdouble-promotion -Wno-unknown-pragmas -Wcast-qual -pedantic -pedantic-errors -fno-omit-frame-pointer -include defines.h"
+	LDFLAGS="-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -Wl,--export-dynamic -fno-omit-frame-pointer"
 
 	sources="clickhouse.cpp
 		src/util.cpp \

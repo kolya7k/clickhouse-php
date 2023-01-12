@@ -6,7 +6,7 @@
 namespace std
 {
 
-string to_string(__int128 value)
+string to_string(clickhouse::Int128 value)
 {
 #if WITH_INT128 == 1
 	if (value == 0)

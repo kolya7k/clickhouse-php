@@ -31,7 +31,7 @@ using std::make_shared;
 
 using std::pair;
 
-#include "php_clickhouse.h"
+#include "clickhouse_php.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"

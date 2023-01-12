@@ -258,7 +258,7 @@ PHP_MINIT_FUNCTION(clickhouse)
 {
 	// ClickHouse
 	zend_class_entry ce;
-	INIT_CLASS_ENTRY(ce, "ClickHouse", clickhouse_functions);
+	INIT_CLASS_ENTRY(ce, "ClickHouse", clickhouse_functions)
 	clickhouse_class_entry = zend_register_internal_class(&ce);
 	clickhouse_class_entry->create_object = clickhouse_new;
 
@@ -277,7 +277,7 @@ PHP_MINIT_FUNCTION(clickhouse)
 
 	// ClickHouseResult
 	zend_class_entry rce;
-	INIT_CLASS_ENTRY(rce, "ClickHouseResult", clickhouse_result_functions);
+	INIT_CLASS_ENTRY(rce, "ClickHouseResult", clickhouse_result_functions)
 	clickhouse_result_class_entry = zend_register_internal_class(&rce);
 
 	memcpy(&clickhouse_object_result_handlers, &std_object_handlers, sizeof(zend_object_handlers));
@@ -309,12 +309,12 @@ typedef void (*zend_ctor_type)(void*);
 
 zend_module_entry clickhouse_module_entry = {
 	STANDARD_MODULE_HEADER,
-	"clickhouse",							/* Extension name */
+	"clickhouse",								/* Extension name */
 	extension_functions,							/* zend_function_entry */
 	PHP_MINIT(clickhouse),							/* PHP_MINIT - Module initialization */
-	nullptr,						/* PHP_MSHUTDOWN - Module shutdown */
+	nullptr,								/* PHP_MSHUTDOWN - Module shutdown */
 	PHP_RINIT(clickhouse),							/* PHP_RINIT - Request initialization */
-	nullptr,						/* PHP_RSHUTDOWN - Request shutdown */
+	nullptr,								/* PHP_RSHUTDOWN - Request shutdown */
 	PHP_MINFO(clickhouse),							/* PHP_MINFO - Module info */
 	MODULE_VERSION,								/* Version */
 	ZEND_MODULE_GLOBALS(clickhouse),
