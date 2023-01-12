@@ -2,13 +2,13 @@
 #include "config.h"
 #endif
 
-#include "ClickHouse.h"
+#include "ClickHouseDB.h"
 
 static constexpr const char *MODULE_VERSION = "1.0.0";
 
 struct ClickHouseObject
 {
-	ClickHouse *impl;
+	ClickHouseDB *impl;
 	zend_object std;
 };
 
@@ -27,7 +27,7 @@ __inline static zend_object* clickhouse_new(zend_class_entry *ce)
 
 	obj->std.handlers = &clickhouse_object_handlers;
 
-	obj->impl = new ClickHouse(&obj->std);
+	obj->impl = new ClickHouseDB(&obj->std);
 
 	return &obj->std;
 }

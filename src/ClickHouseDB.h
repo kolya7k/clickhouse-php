@@ -2,7 +2,7 @@
 
 #include "ClickHouseResult.h"
 
-class ClickHouse
+class ClickHouseDB
 {
 private:
 	inline static const string DEFAULT_HOST = "127.0.0.1";
@@ -36,7 +36,7 @@ private:
 	[[nodiscard]] static bool add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable = false);
 
 public:
-	explicit ClickHouse(zend_object *zend_this);
+	explicit ClickHouseDB(zend_object *zend_this);
 
 	void connect(zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port);
 
@@ -45,7 +45,7 @@ public:
 };
 
 template<class T, class V>
-void ClickHouse::add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null)
+void ClickHouseDB::add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null)
 {
 	if (block.GetColumnCount() <= index)
 	{

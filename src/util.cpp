@@ -1,16 +1,12 @@
 #include "util.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-
 namespace std
 {
 
 string to_string(clickhouse::Int128 value)
 {
-#if WITH_INT128 == 1
 	if (value == 0)
-		return string("0");
+		return {"0"};
 
 	bool negative = value < 0;
 	if (negative)
@@ -23,21 +19,16 @@ string to_string(clickhouse::Int128 value)
 	while (value != 0)
 	{
 		if (end == buffer)
-			return string();
+			return {};
 
-		*--end = "0123456789"[value % 10];
+		*--end = "0123456789"[static_cast<int>(value % 10)];
 		value /= 10;
 	}
 
 	if (negative)
 		*--end = '-';
 
-	return string(end);
-#else
-	return to_string(static_cast<uint64_t>(value));
-#endif
+	return {end};
 }
 
 }
-
-#pragma GCC diagnostic pop

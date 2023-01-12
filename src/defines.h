@@ -3,8 +3,6 @@
 #define DATE_FORMAT		"%Y-%m-%d"
 #define DATETIME_FORMAT		"%Y-%m-%d %H:%M:%S"
 
-#define WITH_INT128		0
-
 #include <cinttypes>
 #include <cstring>
 #include <ctime>
@@ -33,11 +31,6 @@ using std::pair;
 
 #include "clickhouse_php.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpedantic"
-
 #include "clickhouse/client.h"
-
-#pragma GCC diagnostic pop
 
 using namespace clickhouse;

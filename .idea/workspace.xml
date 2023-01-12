@@ -10,9 +10,14 @@
     <option name="reloaded" value="true" />
   </component>
   <component name="CMakeRunConfigurationManager">
-    <generated />
+    <generated>
+      <config projectName="clickhouse-php" targetName="configure" />
+      <config projectName="clickhouse-php" targetName="___" />
+      <config projectName="clickhouse-php" targetName="cleanall" />
+      <config projectName="clickhouse-php" targetName="make" />
+    </generated>
   </component>
-  <component name="CMakeSettings">
+  <component name="CMakeSettings" AUTO_RELOAD="true">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="true" GENERATION_DIR="build/debug" CONFIG_NAME="Debug" GENERATION_OPTIONS="-G Ninja" BUILD_OPTIONS="-v -j 16" />
       <configuration PROFILE_NAME="Release" ENABLED="true" GENERATION_DIR="build/release" CONFIG_NAME="Release" GENERATION_OPTIONS="-G Ninja" BUILD_OPTIONS="-v -j 16" />
@@ -20,26 +25,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1cf5551a-92ed-4eed-b0b6-7c23014d5fd4" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/.name" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test.php" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.hgignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/clickhouse.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/clickhouse.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clickhouse-cpp" beforeDir="false" afterPath="$PROJECT_DIR$/clickhouse-cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clickhouse.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/clickhouse.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/clickhouse_php.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/clickhouse_php.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config.m4" beforeDir="false" afterPath="$PROJECT_DIR$/config.m4" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines.h" beforeDir="false" afterPath="$PROJECT_DIR$/defines.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/php_clickhouse.h" beforeDir="false" afterPath="$PROJECT_DIR$/clickhouse_php.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ClickHouseResult.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/ClickHouseResult.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/defines.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ClickHouse.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ClickHouseDB.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ClickHouse.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/ClickHouseDB.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/util.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/util.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/util.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/util.h" afterDir="false" />
     </list>
@@ -79,16 +74,48 @@
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
     "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager">
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Projects\clickhouse-php\src" />
+    </key>
+  </component>
+  <component name="RunManager" selected="CMake Application.___">
     <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="CLION.EXTERNAL.BUILD" enabled="true" />
       </method>
     </configuration>
+    <configuration name="___" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="clickhouse-php" TARGET_NAME="___" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="cleanall" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="clickhouse-php" TARGET_NAME="cleanall" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="configure" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="clickhouse-php" TARGET_NAME="configure" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="make" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="clickhouse-php" TARGET_NAME="make" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="CMake Application.___" />
+      <item itemvalue="CMake Application.cleanall" />
+      <item itemvalue="CMake Application.configure" />
+      <item itemvalue="CMake Application.make" />
+    </list>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -100,7 +127,7 @@
       <updated>1673518781039</updated>
       <workItem from="1673518782044" duration="771000" />
       <workItem from="1673519918653" duration="10000" />
-      <workItem from="1673520732327" duration="1987000" />
+      <workItem from="1673520732327" duration="6123000" />
     </task>
     <servers />
   </component>

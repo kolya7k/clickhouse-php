@@ -5,9 +5,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(SOURCE_FILES clickhouse.cpp src/util.cpp src/ClickHouse.cpp src/ClickHouseResult.cpp)
+set(SOURCE_FILES src/clickhouse.cpp src/util.cpp src/ClickHouseDB.cpp src/ClickHouseResult.cpp)
 
-add_compile_options(-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -std=gnu++2a -Wall -Wextra -Wdeprecated -Wno-unused-parameter -Wredundant-decls -Wlogical-op -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wdouble-promotion -Wno-unknown-pragmas -Wcast-qual -pedantic -pedantic-errors -fno-omit-frame-pointer -include defines.h)
+add_compile_options(-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -std=gnu++2a -Wall -Wextra -Wdeprecated -Wno-deprecated-declarations -Wno-unused-parameter -Wredundant-decls -Wlogical-op -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wdouble-promotion -Wno-unknown-pragmas -Wcast-qual -fno-omit-frame-pointer -include defines.h)
 add_link_options(-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -Wl,--export-dynamic -fno-omit-frame-pointer)
 
 execute_process (
@@ -23,7 +23,6 @@ include_directories(${PHP_SOURCE}/main)
 include_directories(${PHP_SOURCE}/Zend)
 include_directories(${PHP_SOURCE}/TSRM)
 
-include_directories(.)
 include_directories(src)
 include_directories(clickhouse-cpp)
 
