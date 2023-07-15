@@ -12,9 +12,9 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 
 ## Building
 ```sh
-$ git submodule init
-$ git submodule update
-$ phpize && ./configure
+$ git clone --recursive --depth=1 https://github.com/kolya7k/clickhouse-php.git
+$ phpize
+$./configure
 $ make -j 16
 $ make install
 ```
