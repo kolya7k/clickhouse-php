@@ -15,7 +15,7 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 $ git clone --recursive --depth=1 https://github.com/kolya7k/clickhouse-php.git
 $ cd clickhouse-php
 $ phpize
-$./configure
+$ ./configure
 $ make -j 16
 $ make install
 ```
