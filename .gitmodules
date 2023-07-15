@@ -1,4 +1,4 @@
 [submodule "clickhouse-cpp"]
 	path = clickhouse-cpp
-	url = git@github.com:kolya7k/clickhouse-cpp.git
+	url = https://github.com/kolya7k/clickhouse-cpp.git
 	branch = master
