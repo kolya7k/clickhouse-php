@@ -13,6 +13,7 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 ## Building
 ```sh
 $ git clone --recursive --depth=1 https://github.com/kolya7k/clickhouse-php.git
+$ cd clickhouse-php
 $ phpize
 $./configure
 $ make -j 16
