@@ -46,14 +46,14 @@ if test "$CLICKHOUSE" != "no"; then
 		clickhouse-cpp/clickhouse/columns/uuid.cpp \
 		clickhouse-cpp/clickhouse/types/type_parser.cpp \
 		clickhouse-cpp/clickhouse/types/types.cpp \
+		clickhouse-cpp/contrib/absl/absl/numeric/int128.cc \
 		clickhouse-cpp/contrib/cityhash/cityhash/city.cc \
-		clickhouse-cpp/contrib/absl/numeric/int128.cc \
-		clickhouse-cpp/contrib/lz4/lz4.c \
-		clickhouse-cpp/contrib/lz4/lz4hc.c"
+		clickhouse-cpp/contrib/lz4/lz4/lz4.c \
+		clickhouse-cpp/contrib/lz4/lz4/lz4hc.c"
 
 	PHP_ADD_INCLUDE(src)
 	PHP_ADD_INCLUDE(clickhouse-cpp)
-	PHP_ADD_INCLUDE(clickhouse-cpp/contrib)
+	PHP_ADD_INCLUDE(clickhouse-cpp/contrib/absl)
 	PHP_ADD_INCLUDE(clickhouse-cpp/contrib/cityhash/cityhash)
 
 	PHP_NEW_EXTENSION(clickhouse, $sources, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
