@@ -9,7 +9,9 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 ## Dependencies
 * PHP 7.0+
 * GCC 10+
-* abseil
+* openssl
+* liblz4
+* libabsl
 
 ## Building
 ```sh
