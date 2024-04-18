@@ -21,6 +21,7 @@ if test "$CLICKHOUSE" != "no"; then
 		clickhouse-cpp/clickhouse/client.cpp \
 		clickhouse-cpp/clickhouse/query.cpp \
 		clickhouse-cpp/clickhouse/base/compressed.cpp \
+		clickhouse-cpp/clickhouse/base/endpoints_iterator.cpp \
 		clickhouse-cpp/clickhouse/base/input.cpp \
 		clickhouse-cpp/clickhouse/base/output.cpp \
 		clickhouse-cpp/clickhouse/base/platform.cpp \
