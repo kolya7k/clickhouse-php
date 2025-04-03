@@ -120,7 +120,7 @@ void ClickHouseResult::add_date(zval *row, const ColumnRef &column, const string
 	gmtime_r(&value, &tm_time);
 
 	char buffer[20];		//2020-01-01 00:00:00 + \0
-	size_t writed = strftime(buffer, sizeof(buffer), std::is_same<T, ColumnDate>{} ? DATE_FORMAT : DATETIME_FORMAT, &tm_time);
+	size_t writed = strftime(buffer, sizeof(buffer), std::is_same<T, ColumnDateTime>{} ? DATETIME_FORMAT : DATE_FORMAT, &tm_time);
 	if (writed == 0)
 		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
 
