@@ -155,20 +155,21 @@ auto ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 		case Type::Code::UUID:
 			this->add_string<ColumnUUID>(row, column, name);
 			break;
-//		case Type::Code::IPv4:
-//		case Type::Code::IPv6:
+		case Type::Code::IPv4:
+			this->add_string<ColumnIPv4>(row, column, name);
+			break;
+		case Type::Code::IPv6:
+			this->add_string<ColumnIPv6>(row, column, name);
+			break;
 		case Type::Code::Int128:
-			// clickhouse-cpp doesn't support it yet
 			this->add_long<ColumnInt128>(row, column, name);
 			break;
 		case Type::Code::Decimal:
 		case Type::Code::Decimal32:
 		case Type::Code::Decimal64:
 		case Type::Code::Decimal128:
-		{
 			this->add_decimal(row, column, name);
 			break;
-		}
 		case Type::Code::LowCardinality:
 		{
 			auto nested_type = column->As<ColumnLowCardinality>()->GetNestedType();

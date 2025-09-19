@@ -2,6 +2,8 @@
 
 #include "util.h"
 
+#include <netinet/in.h>
+
 class ClickHouseResult
 {
 	friend class ClickHouse;
@@ -105,12 +107,17 @@ void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const stri
 {
 	auto result = column->As<T>()->At(this->next_row);
 	string_view value;
-	string uuid_string;
+	string tmp_string;
 
 	if constexpr (std::is_same_v<std::decay_t<decltype(result)>, UUID>)
 	{
-		uuid_string = uuid_to_string(result);
-		value = uuid_string;
+		tmp_string = uuid_to_string(result);
+		value = tmp_string;
+	}
+	else if constexpr (std::is_same_v<std::decay_t<decltype(result)>, in_addr> || std::is_same_v<std::decay_t<decltype(result)>, in6_addr>)
+	{
+		tmp_string = column->As<T>()->AsString(this->next_row);
+		value = tmp_string;
 	}
 	else
 		value = result;
