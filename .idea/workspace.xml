@@ -34,17 +34,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1cf5551a-92ed-4eed-b0b6-7c23014d5fd4" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/clickhouse-php.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/other.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/other.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ClickHouseResult.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ClickHouseResult.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ClickHouseResult.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/ClickHouseResult.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/util.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/util.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/util.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/util.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -148,7 +138,7 @@
       <workItem from="1673518782044" duration="771000" />
       <workItem from="1673519918653" duration="10000" />
       <workItem from="1673520732327" duration="6123000" />
-      <workItem from="1758272866440" duration="3414000" />
+      <workItem from="1758272866440" duration="3522000" />
     </task>
     <servers />
   </component>

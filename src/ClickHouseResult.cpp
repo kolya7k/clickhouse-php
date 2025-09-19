@@ -182,6 +182,7 @@ auto ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 					zend_error(E_WARNING, "Type LowCardinality(%s) (%d) is unsupported", nested_type->GetName().c_str(), nested_code);
 					return false;
 			}
+			break;
 		}
 		default:
 			zend_error(E_WARNING, "Type %s (%d) is unsupported", column->Type()->GetName().c_str(), type_code);
