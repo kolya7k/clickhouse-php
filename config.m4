@@ -52,10 +52,10 @@ if test "$CLICKHOUSE" != "no"; then
 		clickhouse-cpp/contrib/lz4/lz4/lz4.c \
 		clickhouse-cpp/contrib/lz4/lz4/lz4hc.c"
 
-	PHP_ADD_INCLUDE(src)
-	PHP_ADD_INCLUDE(clickhouse-cpp)
-	PHP_ADD_INCLUDE(clickhouse-cpp/contrib/absl)
-	PHP_ADD_INCLUDE(clickhouse-cpp/contrib/cityhash/cityhash)
+	PHP_ADD_INCLUDE(PHP_EXT_SRCDIR()/src)
+	PHP_ADD_INCLUDE(PHP_EXT_SRCDIR()/clickhouse-cpp)
+	PHP_ADD_INCLUDE(PHP_EXT_SRCDIR()/clickhouse-cpp/contrib/absl)
+	PHP_ADD_INCLUDE(PHP_EXT_SRCDIR()/clickhouse-cpp/contrib/cityhash/cityhash)
 
 	PHP_NEW_EXTENSION(clickhouse, $sources, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
 fi
