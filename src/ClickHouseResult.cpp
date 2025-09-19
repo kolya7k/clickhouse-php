@@ -1,27 +1,27 @@
 #include "ClickHouseResult.h"
 
 ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count, long int timezone_offset):
-	zend_this(zend_this), blocks(move(blocks)), next_row(0), timezone_offset(timezone_offset)
+	zend_this(zend_this), blocks(std::move(blocks)), next_row(0), timezone_offset(timezone_offset)
 {
 	this->set_num_rows(rows_count);
 }
 
-bool ClickHouseResult::fetch_assoc(zval *row)
+auto ClickHouseResult::fetch_assoc(zval *row) -> bool
 {
 	return this->fetch(row, FetchType::ASSOC);
 }
 
-bool ClickHouseResult::fetch_row(zval *row)
+auto ClickHouseResult::fetch_row(zval *row) -> bool
 {
 	return this->fetch(row, FetchType::NUM);
 }
 
-bool ClickHouseResult::fetch_array(zval *row, FetchType type)
+auto ClickHouseResult::fetch_array(zval *row, FetchType type) -> bool
 {
 	return this->fetch(row, type);
 }
 
-bool ClickHouseResult::fetch_all(zval *rows, FetchType type)
+auto ClickHouseResult::fetch_all(zval *rows, FetchType type) -> bool
 {
 	bool has_rows = false;
 	while (true)
@@ -43,7 +43,7 @@ bool ClickHouseResult::fetch_all(zval *rows, FetchType type)
 	return has_rows;
 }
 
-bool ClickHouseResult::fetch(zval *row, FetchType type)
+auto ClickHouseResult::fetch(zval *row, FetchType type) -> bool
 {
 	while (true)
 	{
@@ -90,8 +90,9 @@ bool ClickHouseResult::fetch(zval *row, FetchType type)
 	}
 }
 
-bool ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string &name) const
+auto ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string &name) const -> bool
 {
+	// ReSharper disable once CppTooWideScope
 	Type::Code type_code = column->Type()->GetCode();
 
 	switch (type_code)
@@ -148,7 +149,9 @@ bool ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 //		case Type::Code::Tuple:
 //		case Type::Code::Enum8:
 //		case Type::Code::Enum16:
-//		case Type::Code::UUID:
+		case Type::Code::UUID:
+			this->add_string<ColumnUUID>(row, column, name);
+			break;
 //		case Type::Code::IPv4:
 //		case Type::Code::IPv6:
 		case Type::Code::Int128:
@@ -163,16 +166,32 @@ bool ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 			this->add_decimal(row, column, name);
 			break;
 		}
-//		case Type::Code::LowCardinality:
+		case Type::Code::LowCardinality:
+		{
+			auto nested_type = column->As<ColumnLowCardinality>()->GetNestedType();
+
+			// ReSharper disable once CppTooWideScope
+			Type::Code nested_code = nested_type->GetCode();
+
+			switch (nested_code)
+			{
+				case Type::Code::String:
+					this->add_string<ColumnLowCardinalityT<ColumnString>>(row, column, name);
+					break;
+				default:
+					zend_error(E_WARNING, "Type LowCardinality(%s) (%d) is unsupported", nested_type->GetName().c_str(), nested_code);
+					return false;
+			}
+		}
 		default:
-			zend_error(E_WARNING, "Type %d is unsupported", type_code);
+			zend_error(E_WARNING, "Type %s (%d) is unsupported", column->Type()->GetName().c_str(), type_code);
 			return false;
 	}
 
 	return true;
 }
 
-bool ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string &name) const
+auto ClickHouseResult::add_null(zval *row, const ColumnRef &column, const string &name) const -> bool
 {
 	auto value = column->As<ColumnNullable>();
 
@@ -194,8 +213,9 @@ void ClickHouseResult::add_decimal(zval *row, const ColumnRef &column, const str
 
 	string text_value = std::to_string(decimal_column->At(this->next_row));
 
-	DecimalType *type_decimal = reinterpret_cast<DecimalType*>(decimal_column->Type().get());
+	auto type_decimal = reinterpret_cast<DecimalType*>(decimal_column->Type().get());
 
+	// ReSharper disable once CppTooWideScopeInitStatement
 	size_t scale = type_decimal->GetScale();
 	if (scale != 0)
 		text_value.insert(text_value.length() - scale, ".");
@@ -208,19 +228,21 @@ void ClickHouseResult::add_decimal(zval *row, const ColumnRef &column, const str
 //	php_printf("value = %lu, scale = %ld, text_value = '%s', text_value length = %lu\n", static_cast<uint64_t>(value), scale, text_value.c_str(), text_value.length());
 }
 
-ClickHouseResult::FetchType ClickHouseResult::get_fetch_type(zend_long resulttype)
+auto ClickHouseResult::get_fetch_type(zend_long resulttype) -> FetchType
 {
-	FetchType type = static_cast<ClickHouseResult::FetchType>(resulttype);
+	// ReSharper disable once CppTooWideScope
+	auto type = static_cast<FetchType>(resulttype);
+
 	switch (type)
 	{
-		case ClickHouseResult::FetchType::ASSOC:
-		case ClickHouseResult::FetchType::NUM:
-		case ClickHouseResult::FetchType::BOTH:
+		case FetchType::ASSOC:
+		case FetchType::NUM:
+		case FetchType::BOTH:
 			return type;
 	}
 
 	zend_error(E_WARNING, "Unknown fetch type %lu, CLICKHOUSE_ASSOC, CLICKHOUSE_NUM or CLICKHOUSE_BOTH are supported", resulttype);
-	return ClickHouseResult::FetchType::BOTH;
+	return FetchType::BOTH;
 }
 
 void ClickHouseResult::set_num_rows(zend_long value) const

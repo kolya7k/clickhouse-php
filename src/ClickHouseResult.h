@@ -15,8 +15,8 @@ public:
 	};
 
 private:
-	static constexpr const int64_t PHP_INT_MAX = 9223372036854775807L;
-	static constexpr const int64_t PHP_INT_MIN = ~PHP_INT_MAX;
+	static constexpr int64_t PHP_INT_MAX = 9223372036854775807L;
+	static constexpr int64_t PHP_INT_MIN = ~PHP_INT_MAX;
 
 	zend_object *zend_this;
 
@@ -25,9 +25,9 @@ private:
 	size_t next_row;
 	long int timezone_offset;
 
-	[[nodiscard]] bool fetch(zval *row, FetchType type);
+	[[nodiscard]] auto fetch(zval *row, FetchType type) -> bool;
 
-	[[nodiscard]] bool add_type(zval *row, const ColumnRef &column, const string &name) const;
+	[[nodiscard]] auto add_type(zval *row, const ColumnRef &column, const string &name) const -> bool;
 
 	template<class T>
 	void add_long(zval *row, const ColumnRef &column, const string &name) const;
@@ -41,7 +41,7 @@ private:
 	template<class T>
 	void add_date(zval *row, const ColumnRef &column, const string &name) const;
 
-	[[nodiscard]] bool add_null(zval *row, const ColumnRef &column, const string &name) const;
+	[[nodiscard]] auto add_null(zval *row, const ColumnRef &column, const string &name) const -> bool;
 
 	void add_decimal(zval *row, const ColumnRef &column, const string &name) const;
 
@@ -50,12 +50,12 @@ private:
 public:
 	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count, long int timezone_offset);
 
-	[[nodiscard]] bool fetch_assoc(zval *row);
-	[[nodiscard]] bool fetch_row(zval *row);
-	[[nodiscard]] bool fetch_array(zval *row, FetchType type);
-	[[nodiscard]] bool fetch_all(zval *rows, FetchType type);
+	[[nodiscard]] auto fetch_assoc(zval *row) -> bool;
+	[[nodiscard]] auto fetch_row(zval *row) -> bool;
+	[[nodiscard]] auto fetch_array(zval *row, FetchType type) -> bool;
+	[[nodiscard]] auto fetch_all(zval *rows, FetchType type) -> bool;
 
-	[[nodiscard]] static FetchType get_fetch_type(zend_long resulttype);
+	[[nodiscard]] static auto get_fetch_type(zend_long resulttype) -> FetchType;
 };
 
 struct ClickHouseResultObject
@@ -103,7 +103,17 @@ void ClickHouseResult::add_float(zval *row, const ColumnRef &column, const strin
 template<class T>
 void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const string &name) const
 {
-	string_view value = column->As<T>()->At(this->next_row);
+	auto result = column->As<T>()->At(this->next_row);
+	string_view value;
+	string uuid_string;
+
+	if constexpr (std::is_same_v<std::decay_t<decltype(result)>, UUID>)
+	{
+		uuid_string = uuid_to_string(result);
+		value = uuid_string;
+	}
+	else
+		value = result;
 
 	if (!name.empty())
 		add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), value.length());

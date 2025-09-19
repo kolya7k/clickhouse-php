@@ -4,24 +4,93 @@
     <option name="confirmBeforeDeletion" value="false" />
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
-      <paths name="Apps (ddaa698d-b51b-4888-b6f5-b9348d95eebb)">
+      <paths name="Angel (36871531-93d6-4da2-947f-76b819266eda)">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
-      <paths name="Bottle (f31ce13a-9848-4150-9025-e67b592c5901)">
+      <paths name="Angel (55828548-c5e0-45e2-8886-e5f0f5928fb1)">
         <serverdata>
           <mappings>
-            <mapping deploy="/tmp/kolya7k/clickhouse-php" local="$PROJECT_DIR$" web="/" />
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Angel (da688fd3-8337-4488-8983-2fbe8e015b52)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Apps (836b43b8-4638-4595-88ef-9f2135dcb4eb)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Apps (a8ffd969-ab25-40a3-a9fd-e3b17432c2ce)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Apps (df497e48-c616-466e-af33-f67c4c59c9b0)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Bottle (3d200514-7d75-4cc7-a715-0117b51fb035)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Bottle (4f59bdc8-21f5-4bbe-a7d7-6fad01a4f665)">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/tmp.afUa6JWPq4/Clickhouse PHP" local="$PROJECT_DIR$" />
           </mappings>
           <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/build/release" />
-            <excludedPath path="/tmp/kolya7k/clickhouse-php/build" />
             <excludedPath local="true" path="$PROJECT_DIR$/build" />
             <excludedPath local="true" path="$PROJECT_DIR$/build/debug" />
+            <excludedPath local="true" path="$PROJECT_DIR$/build/release" />
           </excludedPaths>
+        </serverdata>
+      </paths>
+      <paths name="Bottle (71463fa7-b49d-4c48-b107-afe82366da04)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Bottle (b9dfe19e-553e-4c29-bb12-f448f984ea84)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Bottle Clang (2387b6c1-68a7-4cf0-8e22-d0cd416f8511)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="Bottle Clang (c057a30d-8084-42b1-9496-d5f0c0b5030b)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
         </serverdata>
       </paths>
     </serverData>
