@@ -1,15 +1,14 @@
 #pragma once
 
-#include "ClickHouseResult.h"
-
 class ClickHouseDB
 {
 private:
+	static constexpr uint32_t DEFAULT_PORT = 9000;
+
 	inline static const string DEFAULT_HOST = "127.0.0.1";
 	inline static const string DEFAULT_USERNAME = "default";
 	inline static const string DEFAULT_PASSWD;
 	inline static const string DEFAULT_DBNAME = "default";
-	inline static const uint32_t DEFAULT_PORT = 9000;
 
 	zend_object *zend_this;
 
@@ -19,7 +18,7 @@ private:
 
 	[[nodiscard]] bool is_connected() const;
 
-	[[nodiscard]] bool do_insert(const string &table_name, zend_array *values, zend_array *fields);
+	[[nodiscard]] bool do_insert(const string &table_name, zend_array *values, zend_array *fields) const;
 
 	void set_error(zend_long code, const char *message) const;
 	void set_affected_rows(zend_long value) const;
@@ -27,7 +26,7 @@ private:
 	template<class T, class V>
 	static void add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null);
 
-	static void add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null);
+	static void add_fixed_string(Block &block, const zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null);
 
 	[[nodiscard]] static bool parse_fields(zend_array *fields, vector<zend_string*> &data);
 
@@ -38,10 +37,10 @@ private:
 public:
 	explicit ClickHouseDB(zend_object *zend_this);
 
-	void connect(zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port);
+	void connect(const zend_string *host, const zend_string *username, const zend_string *passwd, const zend_string *dbname, zend_long port);
 
-	[[nodiscard]] zend_object* query(const string &query, bool &success);
-	[[nodiscard]] bool insert(const string &table_name, zend_array *values, zend_array *fields);
+	[[nodiscard]] zend_object* query(const string &query, bool &success) const;
+	[[nodiscard]] bool insert(const string &table_name, zend_array *values, zend_array *fields) const;
 };
 
 template<class T, class V>

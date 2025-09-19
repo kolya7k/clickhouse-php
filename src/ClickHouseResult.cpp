@@ -137,6 +137,9 @@ auto ClickHouseResult::add_type(zval *row, const ColumnRef &column, const string
 		case Type::Code::DateTime:
 			this->add_date<ColumnDateTime>(row, column, name);
 			break;
+		case Type::Code::DateTime64:
+			this->add_date<ColumnDateTime64>(row, column, name);
+			break;
 		case Type::Code::Date:
 			this->add_date<ColumnDate>(row, column, name);
 			break;

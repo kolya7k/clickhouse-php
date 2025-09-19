@@ -1,15 +1,17 @@
 #include "ClickHouseDB.h"
 
+#include "ClickHouseResult.h"
+
 __inline static zend_object* clickhouse_result_new(deque<Block> blocks, size_t rows_count, long int timezone_offset)
 {
-	ClickHouseResultObject *obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
+	auto obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
 
 	zend_object_std_init(&obj->std, clickhouse_result_class_entry);
 	object_properties_init(&obj->std, clickhouse_result_class_entry);
 
 	obj->std.handlers = &clickhouse_object_result_handlers;
 
-	obj->impl = new ClickHouseResult(&obj->std, move(blocks), rows_count, timezone_offset);
+	obj->impl = new ClickHouseResult(&obj->std, std::move(blocks), rows_count, timezone_offset);
 
 	return &obj->std;
 }
@@ -24,7 +26,7 @@ ClickHouseDB::ClickHouseDB(zend_object *zend_this):
 	this->timezone_offset = tm_time.tm_gmtoff;
 }
 
-void ClickHouseDB::connect(zend_string *host, zend_string *username, zend_string *passwd, zend_string *dbname, zend_long port)
+void ClickHouseDB::connect(const zend_string *host, const zend_string *username, const zend_string *passwd, const zend_string *dbname, zend_long port)
 {
 	ClientOptions options;
 	if (host != nullptr)
@@ -65,7 +67,7 @@ void ClickHouseDB::connect(zend_string *host, zend_string *username, zend_string
 	}
 }
 
-zend_object* ClickHouseDB::query(const string &query, bool &success)
+auto ClickHouseDB::query(const string &query, bool &success) const -> zend_object*
 {
 	this->set_error(0, "");
 	this->set_affected_rows(0);
@@ -122,10 +124,10 @@ zend_object* ClickHouseDB::query(const string &query, bool &success)
 
 	this->set_affected_rows(rows_count);
 
-	return clickhouse_result_new(move(blocks), rows_count, this->timezone_offset);
+	return clickhouse_result_new(std::move(blocks), rows_count, this->timezone_offset);
 }
 
-bool ClickHouseDB::insert(const string &table_name, zend_array *values, zend_array *fields)
+auto ClickHouseDB::insert(const string &table_name, zend_array *values, zend_array *fields) const -> bool
 {
 	try
 	{
@@ -149,7 +151,7 @@ bool ClickHouseDB::insert(const string &table_name, zend_array *values, zend_arr
 	}
 }
 
-bool ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_array *fields)
+auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_array *fields) const -> bool
 {
 	this->set_error(0, "");
 
@@ -337,7 +339,7 @@ bool ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	return true;
 }
 
-bool ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable)
+auto ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable) -> bool
 {
 	auto php_type = Z_TYPE_P(z_value);
 	bool types_match;
@@ -400,37 +402,37 @@ bool ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index
 	{
 //		case Type::Code::Void:
 		case Type::Code::Int8:
-			ClickHouseDB::add_value<ColumnInt8>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnInt8>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::Int16:
-			ClickHouseDB::add_value<ColumnInt16>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnInt16>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::Int32:
-			ClickHouseDB::add_value<ColumnInt32>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnInt32>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::Int64:
-			ClickHouseDB::add_value<ColumnInt64>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnInt64>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::UInt8:
-			ClickHouseDB::add_value<ColumnUInt8>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnUInt8>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::UInt16:
-			ClickHouseDB::add_value<ColumnUInt16>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnUInt16>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::UInt32:
-			ClickHouseDB::add_value<ColumnUInt32>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnUInt32>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::UInt64:
-			ClickHouseDB::add_value<ColumnUInt64>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
+			add_value<ColumnUInt64>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::Float32:
-			ClickHouseDB::add_value<ColumnFloat32>(block, name, index, (php_type != IS_NULL) ? Z_DVAL_P(z_value) : 0., nullable, php_type == IS_NULL);
+			add_value<ColumnFloat32>(block, name, index, (php_type != IS_NULL) ? Z_DVAL_P(z_value) : 0., nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::Float64:
-			ClickHouseDB::add_value<ColumnFloat64>(block, name, index, (php_type != IS_NULL) ? Z_DVAL_P(z_value) : 0., nullable, php_type == IS_NULL);
+			add_value<ColumnFloat64>(block, name, index, (php_type != IS_NULL) ? Z_DVAL_P(z_value) : 0., nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::String:
-			ClickHouseDB::add_value<ColumnString>(block, name, index, (php_type != IS_NULL) ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", nullable, php_type == IS_NULL);
+			add_value<ColumnString>(block, name, index, (php_type != IS_NULL) ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", nullable, php_type == IS_NULL);
 			break;
 		case Type::Code::FixedString:
 		{
@@ -442,10 +444,11 @@ bool ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index
 				return false;
 			}
 
-			ClickHouseDB::add_fixed_string(block, name, index, (php_type != IS_NULL) ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", column->FixedSize(), nullable, php_type == IS_NULL);
+			add_fixed_string(block, name, index, (php_type != IS_NULL) ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", column->FixedSize(), nullable, php_type == IS_NULL);
 			break;
 		}
 		case Type::Code::DateTime:
+		//case Type::Code::DateTime64:
 		{
 			time_t timestamp = 0;
 			if (php_type == IS_LONG)
@@ -462,10 +465,11 @@ bool ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index
 				timestamp = mktime(&tm_time);
 			}
 
-			ClickHouseDB::add_value<ColumnDateTime>(block, name, index, timestamp, nullable, php_type == IS_NULL);
+			add_value<ColumnDateTime>(block, name, index, timestamp, nullable, php_type == IS_NULL);
 			break;
 		}
 		case Type::Code::Date:
+		//case Type::Code::Date32:
 		{
 			time_t timestamp = 0;
 			if (php_type == IS_LONG)
@@ -482,12 +486,12 @@ bool ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index
 				timestamp = timegm(&tm_time);
 			}
 
-			ClickHouseDB::add_value<ColumnDate>(block, name, index, timestamp, nullable, php_type == IS_NULL);
+			add_value<ColumnDate>(block, name, index, timestamp, nullable, php_type == IS_NULL);
 			break;
 		}
 //		case Type::Code::Array:
 		case Type::Code::Nullable:
-			return ClickHouseDB::add_by_type(block, name, index, z_value, description_column->As<ColumnNullable>()->Nested(), true);
+			return add_by_type(block, name, index, z_value, description_column->As<ColumnNullable>()->Nested(), true);
 //		case Type::Code::Tuple:
 //		case Type::Code::Enum8:
 //		case Type::Code::Enum16:
@@ -508,7 +512,7 @@ bool ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index
 	return true;
 }
 
-bool ClickHouseDB::is_connected() const
+auto ClickHouseDB::is_connected() const -> bool
 {
 	if (this->client)
 		return true;
@@ -543,7 +547,7 @@ void ClickHouseDB::set_affected_rows(zend_long value) const
 #endif
 }
 
-bool ClickHouseDB::parse_fields(zend_array *fields, vector<zend_string*> &data)
+auto ClickHouseDB::parse_fields(zend_array *fields, vector<zend_string *> &data) -> bool
 {
 	if (fields == nullptr)
 		return true;
@@ -591,7 +595,7 @@ bool ClickHouseDB::parse_fields(zend_array *fields, vector<zend_string*> &data)
 	return true;
 }
 
-bool ClickHouseDB::set_column_index(zend_array *names, zend_string *name)
+auto ClickHouseDB::set_column_index(zend_array *names, zend_string *name) -> bool
 {
 	zval *index_val = zend_hash_find(names, name);
 	if (index_val != nullptr)
@@ -606,7 +610,7 @@ bool ClickHouseDB::set_column_index(zend_array *names, zend_string *name)
 	return true;
 }
 
-void ClickHouseDB::add_fixed_string(Block &block, zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null)
+void ClickHouseDB::add_fixed_string(Block &block, const zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null)
 {
 	if (block.GetColumnCount() <= index)
 	{
