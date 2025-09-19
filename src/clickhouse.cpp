@@ -19,7 +19,7 @@ struct ClickHouseObject
 #define Z_CLICKHOUSE_RESULT(zv) ((ClickHouseResultObject*)((char*)(zv) - XtOffsetOf(ClickHouseResultObject, std)))
 #define Z_CLICKHOUSE_RESULT_P(zv) Z_CLICKHOUSE_RESULT(Z_OBJ_P(zv))
 
-__inline static zend_object* clickhouse_new(zend_class_entry *ce)
+__inline static auto clickhouse_new(zend_class_entry *ce) -> zend_object*
 {
 	auto obj = static_cast<ClickHouseObject*>(zend_object_alloc(sizeof(ClickHouseObject), ce));
 
