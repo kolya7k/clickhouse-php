@@ -3,8 +3,9 @@
 #endif
 
 #include "ClickHouseDB.h"
+#include "ClickHouseResult.h"
 
-static constexpr const char *MODULE_VERSION = "1.0.0";
+static constexpr auto MODULE_VERSION = "1.0.0";
 
 struct ClickHouseObject
 {
@@ -20,7 +21,7 @@ struct ClickHouseObject
 
 __inline static zend_object* clickhouse_new(zend_class_entry *ce)
 {
-	ClickHouseObject *obj = static_cast<ClickHouseObject*>(zend_object_alloc(sizeof(ClickHouseObject), ce));
+	auto obj = static_cast<ClickHouseObject*>(zend_object_alloc(sizeof(ClickHouseObject), ce));
 
 	zend_object_std_init(&obj->std, ce);
 	object_properties_init(&obj->std, ce);
@@ -34,7 +35,7 @@ __inline static zend_object* clickhouse_new(zend_class_entry *ce)
 
 __inline static void clickhouse_result_free(zend_object *obj)
 {
-	ClickHouseResultObject *ch_obj = Z_CLICKHOUSE_RESULT(obj);
+	auto ch_obj = Z_CLICKHOUSE_RESULT(obj);
 
 	delete ch_obj->impl;
 	ch_obj->impl = nullptr;
@@ -42,7 +43,7 @@ __inline static void clickhouse_result_free(zend_object *obj)
 
 __inline static void clickhouse_free(zend_object *obj)
 {
-	ClickHouseObject *ch_obj = Z_CLICKHOUSE(obj);
+	auto ch_obj = Z_CLICKHOUSE(obj);
 
 	delete ch_obj->impl;
 	ch_obj->impl = nullptr;
@@ -81,17 +82,18 @@ PHP_METHOD(ClickHouseObject, __construct)
 		Z_PARAM_LONG(port)
 	ZEND_PARSE_PARAMETERS_END();
 
-	ClickHouseObject *ch = Z_CLICKHOUSE_P(ZEND_THIS);
+	auto ch = Z_CLICKHOUSE_P(ZEND_THIS);
 
 	ch->impl->connect(host, username, passwd, dbname, port);
 }
 
+// ReSharper disable once CppVariableCanBeMadeConstexpr
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_destruct, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseObject, __destruct)
 {
-	ClickHouseObject *ch = Z_CLICKHOUSE_P(ZEND_THIS);
+	auto ch = Z_CLICKHOUSE_P(ZEND_THIS);
 
 	delete ch->impl;
 	ch->impl = nullptr;
@@ -116,7 +118,7 @@ PHP_METHOD(ClickHouseObject, query)
 	// For compatibility with mysqli
 	if (resultmode) {}
 
-	ClickHouseObject *obj = Z_CLICKHOUSE_P(ZEND_THIS);
+	auto obj = Z_CLICKHOUSE_P(ZEND_THIS);
 
 	bool success = false;
 
@@ -150,47 +152,54 @@ PHP_METHOD(ClickHouseObject, insert)
 		Z_PARAM_ARRAY_HT(fields)
 	ZEND_PARSE_PARAMETERS_END();
 
-	ClickHouseObject *obj = Z_CLICKHOUSE_P(ZEND_THIS);
+	auto obj = Z_CLICKHOUSE_P(ZEND_THIS);
 
+	// ReSharper disable once CppTooWideScope
 	bool result = obj->impl->insert(string(ZSTR_VAL(table_name), ZSTR_LEN(table_name)), values, fields);
 	if (result)
 		RETURN_TRUE;
 	RETURN_FALSE;
 }
 
+// ReSharper disable once CppVariableCanBeMadeConstexpr
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_destruct, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseResultObject, __destruct)
 {
-	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+	auto obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
 
 	delete obj->impl;
 	obj->impl = nullptr;
 }
 
+// ReSharper disable once CppVariableCanBeMadeConstexpr
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_assoc, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseResultObject, fetch_assoc)
 {
-	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+	// ReSharper disable once CppTooWideScopeInitStatement
+	auto obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
 
 	if (!obj->impl->fetch_assoc(return_value))
 		RETURN_FALSE;
 }
 
+// ReSharper disable once CppVariableCanBeMadeConstexpr
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_row, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseResultObject, fetch_row)
 {
-	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+	// ReSharper disable once CppTooWideScopeInitStatement
+	auto obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
 
 	if (!obj->impl->fetch_row(return_value))
 		RETURN_FALSE;
 }
 
+// ReSharper disable once CppVariableCanBeMadeConstexpr
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_array, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, resulttype, IS_LONG, 0)
 ZEND_END_ARG_INFO()
@@ -204,14 +213,16 @@ PHP_METHOD(ClickHouseResultObject, fetch_array)
 		Z_PARAM_LONG(resulttype)
 	ZEND_PARSE_PARAMETERS_END();
 
-	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+	auto obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
 
+	// ReSharper disable once CppTooWideScopeInitStatement
 	ClickHouseResult::FetchType type = ClickHouseResult::get_fetch_type(resulttype);
 
 	if (!obj->impl->fetch_array(return_value, type))
 		RETURN_FALSE;
 }
 
+// ReSharper disable once CppVariableCanBeMadeConstexpr
 ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_all, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, resulttype, IS_LONG, 0)
 ZEND_END_ARG_INFO()
@@ -225,15 +236,16 @@ PHP_METHOD(ClickHouseResultObject, fetch_all)
 		Z_PARAM_LONG(resulttype)
 	ZEND_PARSE_PARAMETERS_END();
 
-	ClickHouseResultObject *obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
+	auto obj = Z_CLICKHOUSE_RESULT_P(ZEND_THIS);
 
+	// ReSharper disable once CppTooWideScopeInitStatement
 	ClickHouseResult::FetchType type = ClickHouseResult::get_fetch_type(resulttype);
 
 	if (!obj->impl->fetch_all(return_value, type))
 		RETURN_FALSE;
 }
 
-static const zend_function_entry extension_functions[] = {
+static constexpr zend_function_entry extension_functions[] = {
 	PHP_FE_END
 };
 

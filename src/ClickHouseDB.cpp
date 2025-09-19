@@ -90,7 +90,7 @@ auto ClickHouseDB::query(const string &query, bool &success) const -> zend_objec
 			if (block.GetRowCount() == 0)
 				return;
 
-			rows_count += block.GetRowCount();
+			rows_count += static_cast<zend_long>(block.GetRowCount());
 			blocks.push_back(block);
 		});
 
@@ -240,6 +240,7 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 
 	insert_query.append(") VALUES");
 
+	// ReSharper disable once CppTooWideScopeInitStatement
 	size_t columns_count = zend_hash_num_elements(Z_ARR_P(first_row));
 
 	if ((!fields_data.empty() && fields_data.size() != columns_count) || (fields_data.empty() && zend_hash_num_elements(Z_ARR(column_names)) != columns_count))
@@ -444,7 +445,7 @@ auto ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index
 				return false;
 			}
 
-			add_fixed_string(block, name, index, (php_type != IS_NULL) ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", column->FixedSize(), nullable, php_type == IS_NULL);
+			add_fixed_string(block, name, index, php_type != IS_NULL ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", column->FixedSize(), nullable, php_type == IS_NULL);
 			break;
 		}
 		case Type::Code::DateTime:
@@ -575,8 +576,9 @@ auto ClickHouseDB::parse_fields(zend_array *fields, vector<zend_string *> &data)
 			return false;
 		}
 
-		auto result = uniques.insert(string(Z_STRVAL(bucket->val), Z_STRLEN(bucket->val)));
-		if (!result.second)
+		// ReSharper disable once CppTooWideScopeInitStatement
+		auto [iter, success] = uniques.insert(string(Z_STRVAL(bucket->val), Z_STRLEN(bucket->val)));
+		if (!success)
 		{
 			zend_error(E_WARNING, "Field name '%s' listed twice", Z_STRVAL(bucket->val));
 			return false;
@@ -597,6 +599,7 @@ auto ClickHouseDB::parse_fields(zend_array *fields, vector<zend_string *> &data)
 
 auto ClickHouseDB::set_column_index(zend_array *names, zend_string *name) -> bool
 {
+	// ReSharper disable once CppTooWideScopeInitStatement
 	zval *index_val = zend_hash_find(names, name);
 	if (index_val != nullptr)
 		return false;
