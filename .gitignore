@@ -1,6 +1,9 @@
 syntax: glob
 secret.inc.php
 build
+.idea/workspace.xml
+.idea/deployment.xml
+.idea/other.xml
 
 *.lo
 *.la
