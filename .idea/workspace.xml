@@ -35,11 +35,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="1cf5551a-92ed-4eed-b0b6-7c23014d5fd4" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/clickhouse-cpp" beforeDir="false" afterPath="$PROJECT_DIR$/clickhouse-cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/clickhouse-cpp/contrib/absl/absl/base/options.h" beforeDir="false" afterPath="$PROJECT_DIR$/clickhouse-cpp/contrib/absl/absl/base/options.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ClickHouseDB.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/ClickHouseDB.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/clickhouse.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/src/clickhouse.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -143,7 +139,7 @@
       <workItem from="1673518782044" duration="771000" />
       <workItem from="1673519918653" duration="10000" />
       <workItem from="1673520732327" duration="6123000" />
-      <workItem from="1758272866440" duration="4937000" />
+      <workItem from="1758272866440" duration="5326000" />
     </task>
     <servers />
   </component>
