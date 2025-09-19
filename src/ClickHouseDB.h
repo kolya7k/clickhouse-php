@@ -16,9 +16,9 @@ private:
 
 	long int timezone_offset;
 
-	[[nodiscard]] bool is_connected() const;
+	[[nodiscard]] auto is_connected() const -> bool;
 
-	[[nodiscard]] bool do_insert(const string &table_name, zend_array *values, zend_array *fields) const;
+	[[nodiscard]] auto do_insert(const string &table_name, zend_array *values, zend_array *fields) const -> bool;
 
 	void set_error(zend_long code, const char *message) const;
 	void set_affected_rows(zend_long value) const;
@@ -28,19 +28,19 @@ private:
 
 	static void add_fixed_string(Block &block, const zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null);
 
-	[[nodiscard]] static bool parse_fields(zend_array *fields, vector<zend_string*> &data);
+	[[nodiscard]] static auto parse_fields(zend_array *fields, vector<zend_string *> &data) -> bool;
 
-	[[nodiscard]] static bool set_column_index(zend_array *names, zend_string *name);
+	[[nodiscard]] static auto set_column_index(zend_array *names, zend_string *name) -> bool;
 
-	[[nodiscard]] static bool add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable = false);
+	[[nodiscard]] static auto add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable = false) -> bool;
 
 public:
 	explicit ClickHouseDB(zend_object *zend_this);
 
 	void connect(const zend_string *host, const zend_string *username, const zend_string *passwd, const zend_string *dbname, zend_long port);
 
-	[[nodiscard]] zend_object* query(const string &query, bool &success) const;
-	[[nodiscard]] bool insert(const string &table_name, zend_array *values, zend_array *fields) const;
+	[[nodiscard]] auto query(const string &query, bool &success) const -> zend_object*;
+	[[nodiscard]] auto insert(const string &table_name, zend_array *values, zend_array *fields) const -> bool;
 };
 
 template<class T, class V>

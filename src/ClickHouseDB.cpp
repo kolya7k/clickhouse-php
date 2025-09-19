@@ -2,7 +2,7 @@
 
 #include "ClickHouseResult.h"
 
-__inline static zend_object* clickhouse_result_new(deque<Block> blocks, size_t rows_count, long int timezone_offset)
+__inline static auto clickhouse_result_new(deque<Block> blocks, size_t rows_count, long int timezone_offset) -> zend_object *
 {
 	auto obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
 
