@@ -5,7 +5,7 @@
 #include "ClickHouseDB.h"
 #include "ClickHouseResult.h"
 
-static constexpr auto MODULE_VERSION = "1.0.0";
+static constexpr auto MODULE_VERSION = "1.1.0";
 
 struct ClickHouseObject
 {
@@ -241,8 +241,7 @@ PHP_METHOD(ClickHouseResultObject, fetch_all)
 	// ReSharper disable once CppTooWideScopeInitStatement
 	ClickHouseResult::FetchType type = ClickHouseResult::get_fetch_type(resulttype);
 
-	if (!obj->impl->fetch_all(return_value, type))
-		RETURN_FALSE;
+	obj->impl->fetch_all(return_value, type);
 }
 
 static constexpr zend_function_entry extension_functions[] = {

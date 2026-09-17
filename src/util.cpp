@@ -9,8 +9,20 @@ auto to_string(Int128 value) -> string
 		return {"0"};
 
 	bool negative = value < 0;
+
+	UInt128 magnitude = negative ? UInt128(0) - static_cast<UInt128>(value) : static_cast<UInt128>(value);
+
+	string result = to_string(magnitude);
 	if (negative)
-		value *= -1;
+		result.insert(result.begin(), '-');
+
+	return result;
+}
+
+auto to_string(UInt128 value) -> string
+{
+	if (value == 0)
+		return {"0"};
 
 	char buffer[64] = {0};
 	char *end = buffer + sizeof(buffer) - 1;
@@ -18,15 +30,9 @@ auto to_string(Int128 value) -> string
 
 	while (value != 0)
 	{
-		if (end == buffer)
-			return {};
-
 		*--end = "0123456789"[static_cast<int>(value % 10)];
 		value /= 10;
 	}
-
-	if (negative)
-		*--end = '-';
 
 	return {end};
 }
@@ -41,7 +47,6 @@ auto uuid_to_string(const UUID &uuid) -> string
 	uint64_t hi = uuid.first;
 	uint64_t lo = uuid.second;
 
-	// Стандартный формат: 8-4-4-4-12 = 36 символов
 	string out(36, '0');
 	int pos = 0;
 
@@ -58,7 +63,6 @@ auto uuid_to_string(const UUID &uuid) -> string
 			out[pos++] = '-';
 	};
 
-	// Поля UUID
 	put_hex((hi >> 32) & 0xffffffffULL, 8);
 	put_hex((hi >> 16) & 0xffffULL,4);
 	put_hex( hi	& 0xffffULL, 4);
@@ -68,4 +72,93 @@ auto uuid_to_string(const UUID &uuid) -> string
 	return out;
 }
 
+}
+
+static auto hex_value(char c) -> int
+{
+	if (c >= '0' && c <= '9')
+		return c - '0';
+	if (c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if (c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+
+	return -1;
+}
+
+auto string_to_uuid(string_view text) -> std::optional<UUID>
+{
+	if (text.size() != 36 || text[8] != '-' || text[13] != '-' || text[18] != '-' || text[23] != '-')
+		return std::nullopt;
+
+	uint64_t parts[2] = {0, 0};
+	size_t digits = 0;
+
+	for (char c : text)
+	{
+		if (c == '-')
+			continue;
+
+		int value = hex_value(c);
+		if (value < 0)
+			return std::nullopt;
+
+		parts[digits / 16] = (parts[digits / 16] << 4) | static_cast<uint64_t>(value);
+		digits++;
+	}
+
+	if (digits != 32)
+		return std::nullopt;
+
+	return UUID{parts[0], parts[1]};
+}
+
+auto string_to_uint128(string_view text) -> std::optional<UInt128>
+{
+	if (text.empty())
+		return std::nullopt;
+
+	UInt128 result = 0;
+	for (char c : text)
+	{
+		if (c < '0' || c > '9')
+			return std::nullopt;
+
+		UInt128 next = result * 10 + static_cast<unsigned>(c - '0');
+		if (next / 10 != result)
+			return std::nullopt;
+
+		result = next;
+	}
+
+	return result;
+}
+
+auto string_to_int128(string_view text) -> std::optional<Int128>
+{
+	bool negative = !text.empty() && text[0] == '-';
+	if (negative || (!text.empty() && text[0] == '+'))
+		text.remove_prefix(1);
+
+	std::optional<UInt128> magnitude = string_to_uint128(text);
+	if (!magnitude)
+		return std::nullopt;
+
+	UInt128 limit = static_cast<UInt128>(std::numeric_limits<Int128>::max()) + (negative ? 1 : 0);
+	if (*magnitude > limit)
+		return std::nullopt;
+
+	if (negative)
+		return static_cast<Int128>(UInt128(0) - *magnitude);
+
+	return static_cast<Int128>(*magnitude);
+}
+
+auto pow10_int64(size_t power) -> int64_t
+{
+	int64_t result = 1;
+	for (size_t i = 0; i < power; i++)
+		result *= 10;
+
+	return result;
 }

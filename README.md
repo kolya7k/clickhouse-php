@@ -24,15 +24,20 @@ $ make install
 ```
 
 ## Supported types
-* Int8, Int16, Int32, Int64
-* UInt8, UInt16, UInt32, UInt64
+* Int8, Int16, Int32, Int64, Int128
+* UInt8, UInt16, UInt32, UInt64, UInt128, Bool (read as int)
 * Float32, Float64
-* String
-* FixedString\<N\>
-* DateTime
-* Date
-* Decimal (only for reading)
-* Nullable\<T\> for all previous types
+* String, FixedString<N>
+* Date, Date32, DateTime, DateTime64 (strings in the local time of the PHP host, like mysqli)
+* Decimal, Decimal32, Decimal64, Decimal128 (strings)
+* UUID, IPv4, IPv6 (strings)
+* Enum8, Enum16 (names)
+* Nullable<T>
+* LowCardinality<T> for String, FixedString and Nullable of them (clickhouse-cpp does not support numeric LowCardinality)
+* Array<T>, Tuple, Map (PHP arrays, nested to any depth)
+* Point, Ring, Polygon, MultiPolygon (nested arrays of [x, y])
+
+Values outside of PHP int range (UInt64, Int128, UInt128) are returned as strings and accepted as strings on insert.
 
 ## Limitations and difference from mysqli
 * No MYSQLI_USE_RESULT logic, all data loaded into memory before using it in PHP code

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "util.h"
+
 class ClickHouseDB
 {
 private:
@@ -14,8 +16,6 @@ private:
 
 	shared_ptr<Client> client;
 
-	long int timezone_offset;
-
 	[[nodiscard]] auto is_connected() const -> bool;
 
 	[[nodiscard]] auto do_insert(const string &table_name, zend_array *values, zend_array *fields) const -> bool;
@@ -23,16 +23,26 @@ private:
 	void set_error(zend_long code, const char *message) const;
 	void set_affected_rows(zend_long value) const;
 
-	template<class T, class V>
-	static void add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null);
-
-	static void add_fixed_string(Block &block, const zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null);
-
 	[[nodiscard]] static auto parse_fields(zend_array *fields, vector<zend_string *> &data) -> bool;
 
 	[[nodiscard]] static auto set_column_index(zend_array *names, zend_string *name) -> bool;
 
-	[[nodiscard]] static auto add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable = false) -> bool;
+	[[nodiscard]] static auto create_column(const TypeRef &type) -> ColumnRef;
+	[[nodiscard]] static auto wrap_low_cardinality(const ColumnRef &column) -> ColumnRef;
+
+	[[nodiscard]] static auto append_value(const ColumnRef &column, zval *value, const zend_string *name) -> bool;
+	[[nodiscard]] static auto append_default(const ColumnRef &column, const zend_string *name) -> bool;
+	[[nodiscard]] static auto append_map(const ColumnRef &column, zend_array *pairs, const zend_string *name) -> bool;
+
+	[[nodiscard]] static auto parse_timestamp(const char *text, const char *format, bool local, const char **rest) -> std::optional<time_t>;
+
+	template<class T, class V>
+	[[nodiscard]] static auto append_integer(const ColumnRef &column, zval *value, const zend_string *name) -> bool;
+
+	template<class T>
+	[[nodiscard]] static auto php_to_geo(zval *value, T &out, const zend_string *name) -> bool;
+
+	[[nodiscard]] static auto type_mismatch(const zend_string *name, const char *expected) -> bool;
 
 public:
 	explicit ClickHouseDB(zend_object *zend_this);
@@ -44,28 +54,88 @@ public:
 };
 
 template<class T, class V>
-void ClickHouseDB::add_value(Block &block, zend_string *name, zend_ulong index, V value, bool nullable, bool is_null)
+auto ClickHouseDB::append_integer(const ColumnRef &column, zval *value, const zend_string *name) -> bool
 {
-	if (block.GetColumnCount() <= index)
+	switch (Z_TYPE_P(value))
 	{
-		if (nullable)
-		{
-			auto nested = make_shared<T>();
-			auto nulls = make_shared<ColumnUInt8>();
+		case IS_LONG:
+			column->As<T>()->Append(static_cast<V>(Z_LVAL_P(value)));
+			return true;
+		case IS_TRUE:
+			column->As<T>()->Append(static_cast<V>(1));
+			return true;
+		case IS_FALSE:
+			column->As<T>()->Append(static_cast<V>(0));
+			return true;
+		case IS_STRING:
+			if constexpr (std::is_same_v<V, Int128> || std::is_same_v<V, UInt128>)
+			{
+				std::optional<V> number;
+				if constexpr (std::is_same_v<V, Int128>)
+					number = string_to_int128(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+				else
+					number = string_to_uint128(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
 
-			block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnNullable>(nested, nulls));
-		}
-		else
-			block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<T>());
+				if (!number)
+					return type_mismatch(name, "integer");
+
+				column->As<T>()->Append(*number);
+				return true;
+			}
+			return type_mismatch(name, "integer");
+		default:
+			return type_mismatch(name, "integer");
 	}
+}
 
-	if (nullable)
+template<class T>
+auto ClickHouseDB::php_to_geo(zval *value, T &out, const zend_string *name) -> bool
+{
+	if (Z_TYPE_P(value) != IS_ARRAY)
+		return type_mismatch(name, "array");
+
+	if constexpr (std::is_same_v<T, std::tuple<double, double>>)
 	{
-		auto column = block[index]->As<ColumnNullable>();
+		if (zend_hash_num_elements(Z_ARR_P(value)) != 2)
+		{
+			zend_error(E_WARNING, "Point for column '%s' must have 2 coordinates but %u given", ZSTR_VAL(name), zend_hash_num_elements(Z_ARR_P(value)));
+			return false;
+		}
 
-		column->Nested()->As<T>()->Append(value);
-		column->Nulls()->As<ColumnUInt8>()->Append(is_null ? 1 : 0);
+		double coordinates[2] = {0., 0.};
+		size_t i = 0;
+
+		zval *coordinate;
+		ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), coordinate)
+		{
+			if (Z_TYPE_P(coordinate) == IS_DOUBLE)
+				coordinates[i] = Z_DVAL_P(coordinate);
+			else if (Z_TYPE_P(coordinate) == IS_LONG)
+				coordinates[i] = static_cast<double>(Z_LVAL_P(coordinate));
+			else
+				return type_mismatch(name, "float");
+
+			i++;
+		}
+		ZEND_HASH_FOREACH_END();
+
+		out = std::make_tuple(coordinates[0], coordinates[1]);
+		return true;
 	}
 	else
-		block[index]->As<T>()->Append(value);
+	{
+		zval *element;
+		ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), element)
+		{
+			typename T::value_type item;
+
+			if (!php_to_geo(element, item, name))
+				return false;
+
+			out.push_back(std::move(item));
+		}
+		ZEND_HASH_FOREACH_END();
+
+		return true;
+	}
 }

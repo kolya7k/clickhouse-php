@@ -16,6 +16,10 @@
 #include <unordered_set>
 #include <type_traits>
 #include <memory>
+#include <optional>
+#include <limits>
+#include <cmath>
+#include <tuple>
 
 using std::string;
 using std::string_view;

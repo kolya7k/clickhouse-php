@@ -2,7 +2,9 @@
 
 #include "ClickHouseResult.h"
 
-__inline static auto clickhouse_result_new(deque<Block> blocks, size_t rows_count, long int timezone_offset) -> zend_object *
+#include "clickhouse/columns/factory.h"
+
+__inline static auto clickhouse_result_new(deque<Block> blocks, size_t rows_count) -> zend_object *
 {
 	auto obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
 
@@ -11,20 +13,14 @@ __inline static auto clickhouse_result_new(deque<Block> blocks, size_t rows_coun
 
 	obj->std.handlers = &clickhouse_object_result_handlers;
 
-	obj->impl = new ClickHouseResult(&obj->std, std::move(blocks), rows_count, timezone_offset);
+	obj->impl = new ClickHouseResult(&obj->std, std::move(blocks), rows_count);
 
 	return &obj->std;
 }
 
 ClickHouseDB::ClickHouseDB(zend_object *zend_this):
 	zend_this(zend_this)
-{
-	time_t value = 0;
-	tm tm_time{};
-	localtime_r(&value, &tm_time);
-
-	this->timezone_offset = tm_time.tm_gmtoff;
-}
+{}
 
 void ClickHouseDB::connect(const zend_string *host, const zend_string *username, const zend_string *passwd, const zend_string *dbname, zend_long port)
 {
@@ -96,7 +92,7 @@ auto ClickHouseDB::query(const string &query, bool &success) const -> zend_objec
 
 		this->client->Execute(ch_query);
 	}
-	catch (ServerException &e)
+	catch (const ServerException &e)
 	{
 		success = false;
 
@@ -106,7 +102,7 @@ auto ClickHouseDB::query(const string &query, bool &success) const -> zend_objec
 		this->client->ResetConnection();
 		return nullptr;
 	}
-	catch (std::runtime_error &e)
+	catch (const std::exception &e)
 	{
 		success = false;
 
@@ -124,7 +120,7 @@ auto ClickHouseDB::query(const string &query, bool &success) const -> zend_objec
 
 	this->set_affected_rows(rows_count);
 
-	return clickhouse_result_new(std::move(blocks), rows_count, this->timezone_offset);
+	return clickhouse_result_new(std::move(blocks), rows_count);
 }
 
 auto ClickHouseDB::insert(const string &table_name, zend_array *values, zend_array *fields) const -> bool
@@ -133,7 +129,7 @@ auto ClickHouseDB::insert(const string &table_name, zend_array *values, zend_arr
 	{
 		return this->do_insert(table_name, values, fields);
 	}
-	catch (ServerException &e)
+	catch (const ServerException &e)
 	{
 		this->set_error(e.GetCode(), e.what());
 		this->set_affected_rows(-1);
@@ -141,7 +137,7 @@ auto ClickHouseDB::insert(const string &table_name, zend_array *values, zend_arr
 		this->client->ResetConnection();
 		return false;
 	}
-	catch (std::exception &e)
+	catch (const std::exception &e)
 	{
 		this->set_error(0, e.what());
 		this->set_affected_rows(-1);
@@ -246,6 +242,7 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	if ((!fields_data.empty() && fields_data.size() != columns_count) || (fields_data.empty() && zend_hash_num_elements(Z_ARR(column_names)) != columns_count))
 	{
 		zend_error(E_WARNING, "Fields count must be equal to columns count");
+		zend_array_destroy(Z_ARR(column_names));
 		return false;
 	}
 
@@ -256,7 +253,17 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 		description_block = block;
 	});
 
-	Block block;
+	if (description_block.GetColumnCount() != columns_count)
+	{
+		zend_error(E_WARNING, "Table %s description has %lu columns but %lu requested", table_name.c_str(), description_block.GetColumnCount(), columns_count);
+		zend_array_destroy(Z_ARR(column_names));
+		return false;
+	}
+
+	vector<ColumnRef> columns;
+	for (size_t i = 0; i < columns_count; i++)
+		columns.push_back(create_column(description_block[i]->Type()));
+
 	zend_long rows = 0;
 
 	Bucket *row_bucket;
@@ -272,6 +279,13 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 		if (Z_TYPE(row_bucket->val) != IS_ARRAY)
 		{
 			zend_error(E_WARNING, "Values must be array but got type %d", Z_TYPE(row_bucket->val));
+			zend_array_destroy(Z_ARR(column_names));
+			return false;
+		}
+
+		if (zend_hash_num_elements(Z_ARR(row_bucket->val)) != columns_count)
+		{
+			zend_error(E_WARNING, "Row %lu has %u columns but %lu expected", row_bucket->h, zend_hash_num_elements(Z_ARR(row_bucket->val)), columns_count);
 			zend_array_destroy(Z_ARR(column_names));
 			return false;
 		}
@@ -320,7 +334,7 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 				index = Z_LVAL_P(index_val);
 			}
 
-			if (!ClickHouseDB::add_by_type(block, name, index, &column_bucket->val, description_block[index]))
+			if (!append_value(columns[index], &column_bucket->val, name))
 			{
 				zend_array_destroy(Z_ARR(column_names));
 				return false;
@@ -332,6 +346,16 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 
 	zend_array_destroy(Z_ARR(column_names));
 
+	Block block;
+	for (size_t i = 0; i < columns_count; i++)
+	{
+		ColumnRef column = columns[i];
+		if (description_block[i]->Type()->GetCode() == Type::Code::LowCardinality)
+			column = wrap_low_cardinality(column);
+
+		block.AppendColumn(description_block.GetColumnName(i), column);
+	}
+
 	block.RefreshRowCount();
 
 	this->client->InsertData(block);
@@ -340,177 +364,579 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	return true;
 }
 
-auto ClickHouseDB::add_by_type(Block &block, zend_string *name, zend_ulong index, zval *z_value, const ColumnRef &description_column, bool nullable) -> bool
+auto ClickHouseDB::create_column(const TypeRef &type) -> ColumnRef
 {
-	auto php_type = Z_TYPE_P(z_value);
-	bool types_match;
+	if (type->GetCode() == Type::Code::LowCardinality)
+		return CreateColumnByType(type->As<LowCardinalityType>()->GetNestedType()->GetName());
 
-	Type::Code type = description_column->Type()->GetCode();
-	switch (type)
-	{
-//		case Type::Code::Void:
-		case Type::Code::Int8:
-		case Type::Code::Int16:
-		case Type::Code::Int32:
-		case Type::Code::Int64:
-		case Type::Code::UInt8:
-		case Type::Code::UInt16:
-		case Type::Code::UInt32:
-		case Type::Code::UInt64:
-			types_match = (php_type == IS_LONG || (nullable && php_type == IS_NULL));
-			break;
-		case Type::Code::Float32:
-		case Type::Code::Float64:
-			types_match = (php_type == IS_DOUBLE || (nullable && php_type == IS_NULL));
-			break;
-		case Type::Code::String:
-		case Type::Code::FixedString:
-			types_match = (php_type == IS_STRING || (nullable && php_type == IS_NULL));
-			break;
-		case Type::Code::DateTime:
-		case Type::Code::Date:
-			types_match = (php_type == IS_STRING || php_type == IS_LONG || (nullable && php_type == IS_NULL));
-			break;
-//		case Type::Code::Array:
-		case Type::Code::Nullable:
-			// Checked in nested call
-			types_match = !nullable;
-			break;
-//		case Type::Code::Tuple:
-//		case Type::Code::Enum8:
-//		case Type::Code::Enum16:
-//		case Type::Code::UUID:
-//		case Type::Code::IPv4:
-//		case Type::Code::IPv6:
-//		case Type::Code::Int128:
-//		case Type::Code::Decimal:
-//		case Type::Code::Decimal32:
-//		case Type::Code::Decimal64:
-//		case Type::Code::Decimal128:
-//		case Type::Code::LowCardinality:
-		default:
-			zend_error(E_WARNING, "Value type %d is unsupported", type);
-			return false;
-	}
+	return CreateColumnByType(type->GetName());
+}
 
-	if (!types_match)
-	{
-		zend_error(E_WARNING, "Value type and declared type mismatch for value '%s'", ZSTR_VAL(name));
-		return false;
-	}
+auto ClickHouseDB::wrap_low_cardinality(const ColumnRef &column) -> ColumnRef
+{
+	if (auto nullable = column->As<ColumnNullable>())
+		return make_shared<ColumnLowCardinality>(nullable);
+
+	return make_shared<ColumnLowCardinality>(column);
+}
+
+auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend_string *name) -> bool
+{
+	auto php_type = Z_TYPE_P(value);
+
+	// ReSharper disable once CppTooWideScope
+	Type::Code type = column->Type()->GetCode();
 
 	switch (type)
 	{
-//		case Type::Code::Void:
 		case Type::Code::Int8:
-			add_value<ColumnInt8>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnInt8, int8_t>(column, value, name);
 		case Type::Code::Int16:
-			add_value<ColumnInt16>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnInt16, int16_t>(column, value, name);
 		case Type::Code::Int32:
-			add_value<ColumnInt32>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnInt32, int32_t>(column, value, name);
 		case Type::Code::Int64:
-			add_value<ColumnInt64>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnInt64, int64_t>(column, value, name);
+		case Type::Code::Int128:
+			return append_integer<ColumnInt128, Int128>(column, value, name);
 		case Type::Code::UInt8:
-			add_value<ColumnUInt8>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnUInt8, uint8_t>(column, value, name);
 		case Type::Code::UInt16:
-			add_value<ColumnUInt16>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnUInt16, uint16_t>(column, value, name);
 		case Type::Code::UInt32:
-			add_value<ColumnUInt32>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnUInt32, uint32_t>(column, value, name);
 		case Type::Code::UInt64:
-			add_value<ColumnUInt64>(block, name, index, (php_type != IS_NULL) ? Z_LVAL_P(z_value) : 0, nullable, php_type == IS_NULL);
-			break;
+			return append_integer<ColumnUInt64, uint64_t>(column, value, name);
+		case Type::Code::UInt128:
+			return append_integer<ColumnUInt128, UInt128>(column, value, name);
 		case Type::Code::Float32:
-			add_value<ColumnFloat32>(block, name, index, (php_type != IS_NULL) ? Z_DVAL_P(z_value) : 0., nullable, php_type == IS_NULL);
-			break;
 		case Type::Code::Float64:
-			add_value<ColumnFloat64>(block, name, index, (php_type != IS_NULL) ? Z_DVAL_P(z_value) : 0., nullable, php_type == IS_NULL);
-			break;
+		{
+			double number;
+			if (php_type == IS_DOUBLE)
+				number = Z_DVAL_P(value);
+			else if (php_type == IS_LONG)
+				number = static_cast<double>(Z_LVAL_P(value));
+			else
+				return type_mismatch(name, "float");
+
+			if (type == Type::Code::Float32)
+				column->As<ColumnFloat32>()->Append(static_cast<float>(number));
+			else
+				column->As<ColumnFloat64>()->Append(number);
+			return true;
+		}
 		case Type::Code::String:
-			add_value<ColumnString>(block, name, index, (php_type != IS_NULL) ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", nullable, php_type == IS_NULL);
-			break;
+			if (php_type != IS_STRING)
+				return type_mismatch(name, "string");
+
+			column->As<ColumnString>()->Append(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+			return true;
 		case Type::Code::FixedString:
 		{
-			auto column = description_column->As<ColumnFixedString>();
+			if (php_type != IS_STRING)
+				return type_mismatch(name, "string");
 
-			if (php_type != IS_NULL && column->FixedSize() < Z_STRLEN_P(z_value))
+			auto fixed = column->As<ColumnFixedString>();
+			if (fixed->FixedSize() < Z_STRLEN_P(value))
 			{
-				zend_error(E_WARNING, "FixedString column max size %lu < value size %lu", column->FixedSize(), Z_STRLEN_P(z_value));
+				zend_error(E_WARNING, "FixedString column '%s' max size %lu < value size %lu", ZSTR_VAL(name), fixed->FixedSize(), Z_STRLEN_P(value));
 				return false;
 			}
 
-			add_fixed_string(block, name, index, php_type != IS_NULL ? string_view(Z_STRVAL_P(z_value), Z_STRLEN_P(z_value)) : "", column->FixedSize(), nullable, php_type == IS_NULL);
-			break;
-		}
-		case Type::Code::DateTime:
-		//case Type::Code::DateTime64:
-		{
-			time_t timestamp = 0;
-			if (php_type == IS_LONG)
-				timestamp = Z_LVAL_P(z_value);
-			else if (php_type == IS_STRING)
-			{
-				tm tm_time{};
-				if (strptime(Z_STRVAL_P(z_value), DATETIME_FORMAT, &tm_time) == nullptr)
-				{
-					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(z_value), DATETIME_FORMAT);
-					return false;
-				}
-
-				timestamp = mktime(&tm_time);
-			}
-
-			add_value<ColumnDateTime>(block, name, index, timestamp, nullable, php_type == IS_NULL);
-			break;
+			fixed->Append(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+			return true;
 		}
 		case Type::Code::Date:
-		//case Type::Code::Date32:
+		case Type::Code::Date32:
 		{
 			time_t timestamp = 0;
 			if (php_type == IS_LONG)
-				timestamp = Z_LVAL_P(z_value) * (24 * 60 * 60);
+				timestamp = Z_LVAL_P(value) * (24 * 60 * 60);
 			else if (php_type == IS_STRING)
 			{
-				tm tm_time{};
-				if (strptime(Z_STRVAL_P(z_value), DATE_FORMAT, &tm_time) == nullptr)
+				std::optional<time_t> parsed = parse_timestamp(Z_STRVAL_P(value), DATE_FORMAT, false, nullptr);
+				if (!parsed)
 				{
-					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(z_value), DATE_FORMAT);
+					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(value), DATE_FORMAT);
 					return false;
 				}
 
-				timestamp = timegm(&tm_time);
+				timestamp = *parsed;
+			}
+			else
+				return type_mismatch(name, "date string or days number");
+
+			if (type == Type::Code::Date)
+				column->As<ColumnDate>()->Append(timestamp);
+			else
+				column->As<ColumnDate32>()->Append(timestamp);
+			return true;
+		}
+		case Type::Code::DateTime:
+		{
+			time_t timestamp = 0;
+			if (php_type == IS_LONG)
+				timestamp = Z_LVAL_P(value);
+			else if (php_type == IS_STRING)
+			{
+				std::optional<time_t> parsed = parse_timestamp(Z_STRVAL_P(value), DATETIME_FORMAT, true, nullptr);
+				if (!parsed)
+				{
+					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(value), DATETIME_FORMAT);
+					return false;
+				}
+
+				timestamp = *parsed;
+			}
+			else
+				return type_mismatch(name, "datetime string or timestamp");
+
+			column->As<ColumnDateTime>()->Append(timestamp);
+			return true;
+		}
+		case Type::Code::DateTime64:
+		{
+			auto datetime = column->As<ColumnDateTime64>();
+			int64_t scale = pow10_int64(datetime->GetPrecision());
+			int64_t ticks;
+
+			if (php_type == IS_LONG)
+				ticks = Z_LVAL_P(value) * scale;
+			else if (php_type == IS_DOUBLE)
+				ticks = static_cast<int64_t>(std::llround(Z_DVAL_P(value) * static_cast<double>(scale)));
+			else if (php_type == IS_STRING)
+			{
+				const char *rest = nullptr;
+				std::optional<time_t> parsed = parse_timestamp(Z_STRVAL_P(value), DATETIME_FORMAT, true, &rest);
+				if (!parsed)
+				{
+					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(value), DATETIME_FORMAT);
+					return false;
+				}
+
+				ticks = *parsed * scale;
+
+				if (rest != nullptr && *rest == '.')
+				{
+					int64_t fraction = 0;
+					size_t digits = 0;
+
+					for (const char *c = rest + 1; *c >= '0' && *c <= '9'; c++)
+					{
+						if (digits < datetime->GetPrecision())
+							fraction = fraction * 10 + (*c - '0');
+						digits++;
+					}
+
+					for (size_t i = digits; i < datetime->GetPrecision(); i++)
+						fraction *= 10;
+
+					ticks += fraction;
+				}
+			}
+			else
+				return type_mismatch(name, "datetime string, timestamp or float seconds");
+
+			datetime->Append(ticks);
+			return true;
+		}
+		case Type::Code::Nullable:
+		{
+			auto nullable = column->As<ColumnNullable>();
+
+			nullable->Append(php_type == IS_NULL);
+
+			if (php_type == IS_NULL)
+				return append_default(nullable->Nested(), name);
+
+			return append_value(nullable->Nested(), value, name);
+		}
+		case Type::Code::LowCardinality:
+		{
+			if (php_type != IS_STRING)
+				return type_mismatch(name, "string");
+
+			if (auto strings = column->As<ColumnLowCardinalityT<ColumnString>>())
+			{
+				strings->Append(string(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+				return true;
 			}
 
-			add_value<ColumnDate>(block, name, index, timestamp, nullable, php_type == IS_NULL);
-			break;
+			if (auto fixed_strings = column->As<ColumnLowCardinalityT<ColumnFixedString>>())
+			{
+				fixed_strings->Append(string(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+				return true;
+			}
+
+			zend_error(E_WARNING, "Nested %s is unsupported for column '%s'", column->Type()->GetName().c_str(), ZSTR_VAL(name));
+			return false;
 		}
-//		case Type::Code::Array:
-		case Type::Code::Nullable:
-			return add_by_type(block, name, index, z_value, description_column->As<ColumnNullable>()->Nested(), true);
-//		case Type::Code::Tuple:
-//		case Type::Code::Enum8:
-//		case Type::Code::Enum16:
-//		case Type::Code::UUID:
-//		case Type::Code::IPv4:
-//		case Type::Code::IPv6:
-//		case Type::Code::Int128:
-//		case Type::Code::Decimal:
-//		case Type::Code::Decimal32:
-//		case Type::Code::Decimal64:
-//		case Type::Code::Decimal128:
-//		case Type::Code::LowCardinality:
+		case Type::Code::Array:
+		{
+			if (php_type != IS_ARRAY)
+				return type_mismatch(name, "array");
+
+			ColumnRef elements = CreateColumnByType(column->Type()->As<ArrayType>()->GetItemType()->GetName());
+
+			zval *element;
+			ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), element)
+			{
+				if (!append_value(elements, element, name))
+					return false;
+			}
+			ZEND_HASH_FOREACH_END();
+
+			column->As<ColumnArray>()->AppendAsColumn(elements);
+			return true;
+		}
+		case Type::Code::Tuple:
+		{
+			if (php_type != IS_ARRAY)
+				return type_mismatch(name, "array");
+
+			auto tuple = column->As<ColumnTuple>();
+			if (zend_hash_num_elements(Z_ARR_P(value)) != tuple->TupleSize())
+			{
+				zend_error(E_WARNING, "Tuple column '%s' has %lu elements but %u given", ZSTR_VAL(name), tuple->TupleSize(), zend_hash_num_elements(Z_ARR_P(value)));
+				return false;
+			}
+
+			size_t i = 0;
+			zval *element;
+			ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), element)
+			{
+				if (!append_value(tuple->At(i++), element, name))
+					return false;
+			}
+			ZEND_HASH_FOREACH_END();
+
+			return true;
+		}
+		case Type::Code::Map:
+			if (php_type != IS_ARRAY)
+				return type_mismatch(name, "array");
+
+			return append_map(column, Z_ARR_P(value), name);
+		case Type::Code::Point:
+		{
+			std::tuple<double, double> point;
+			if (!php_to_geo(value, point, name))
+				return false;
+
+			column->As<ColumnPoint>()->Append(point);
+			return true;
+		}
+		case Type::Code::Ring:
+		{
+			vector<std::tuple<double, double>> ring;
+			if (!php_to_geo(value, ring, name))
+				return false;
+
+			column->As<ColumnRing>()->Append(ring);
+			return true;
+		}
+		case Type::Code::Polygon:
+		{
+			vector<vector<std::tuple<double, double>>> polygon;
+			if (!php_to_geo(value, polygon, name))
+				return false;
+
+			column->As<ColumnPolygon>()->Append(polygon);
+			return true;
+		}
+		case Type::Code::MultiPolygon:
+		{
+			vector<vector<vector<std::tuple<double, double>>>> multi_polygon;
+			if (!php_to_geo(value, multi_polygon, name))
+				return false;
+
+			column->As<ColumnMultiPolygon>()->Append(multi_polygon);
+			return true;
+		}
+		case Type::Code::Enum8:
+		case Type::Code::Enum16:
+		{
+			if (php_type == IS_STRING)
+			{
+				string enum_name(Z_STRVAL_P(value), Z_STRLEN_P(value));
+
+				if (type == Type::Code::Enum8)
+					column->As<ColumnEnum8>()->Append(enum_name);
+				else
+					column->As<ColumnEnum16>()->Append(enum_name);
+				return true;
+			}
+
+			if (php_type == IS_LONG)
+			{
+				if (type == Type::Code::Enum8)
+					column->As<ColumnEnum8>()->Append(static_cast<int8_t>(Z_LVAL_P(value)), true);
+				else
+					column->As<ColumnEnum16>()->Append(static_cast<int16_t>(Z_LVAL_P(value)), true);
+				return true;
+			}
+
+			return type_mismatch(name, "enum name or value");
+		}
+		case Type::Code::UUID:
+		{
+			if (php_type != IS_STRING)
+				return type_mismatch(name, "uuid string");
+
+			std::optional<UUID> uuid = string_to_uuid(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+			if (!uuid)
+			{
+				zend_error(E_WARNING, "Failed to parse UUID '%s' for column '%s'", Z_STRVAL_P(value), ZSTR_VAL(name));
+				return false;
+			}
+
+			column->As<ColumnUUID>()->Append(*uuid);
+			return true;
+		}
+		case Type::Code::IPv4:
+			if (php_type == IS_STRING)
+			{
+				column->As<ColumnIPv4>()->Append(string(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+				return true;
+			}
+
+			if (php_type == IS_LONG)
+			{
+				column->As<ColumnIPv4>()->Append(static_cast<uint32_t>(Z_LVAL_P(value)));
+				return true;
+			}
+
+			return type_mismatch(name, "ip string or number");
+		case Type::Code::IPv6:
+			if (php_type != IS_STRING)
+				return type_mismatch(name, "ip string");
+
+			column->As<ColumnIPv6>()->Append(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+			return true;
+		case Type::Code::Decimal:
+		case Type::Code::Decimal32:
+		case Type::Code::Decimal64:
+		case Type::Code::Decimal128:
+		{
+			auto decimal = column->As<ColumnDecimal>();
+
+			if (php_type == IS_STRING)
+				decimal->Append(string(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+			else if (php_type == IS_LONG)
+				decimal->Append(std::to_string(Z_LVAL_P(value)));
+			else if (php_type == IS_DOUBLE)
+			{
+				char buffer[64];
+				snprintf(buffer, sizeof(buffer), "%.*f", static_cast<int>(decimal->GetScale()), Z_DVAL_P(value));
+				decimal->Append(string(buffer));
+			}
+			else
+				return type_mismatch(name, "decimal string or number");
+
+			return true;
+		}
 		default:
-			zend_error(E_WARNING, "Value type %d is unsupported", type);
+			zend_error(E_WARNING, "Type %s (%d) is unsupported for column '%s'", column->Type()->GetName().c_str(), type, ZSTR_VAL(name));
 			return false;
 	}
+}
 
+auto ClickHouseDB::append_default(const ColumnRef &column, const zend_string *name) -> bool
+{
+	// ReSharper disable once CppTooWideScope
+	Type::Code type = column->Type()->GetCode();
+
+	switch (type)
+	{
+		case Type::Code::Int8:
+			column->As<ColumnInt8>()->Append(0);
+			return true;
+		case Type::Code::Int16:
+			column->As<ColumnInt16>()->Append(0);
+			return true;
+		case Type::Code::Int32:
+			column->As<ColumnInt32>()->Append(0);
+			return true;
+		case Type::Code::Int64:
+			column->As<ColumnInt64>()->Append(0);
+			return true;
+		case Type::Code::Int128:
+			column->As<ColumnInt128>()->Append(Int128(0));
+			return true;
+		case Type::Code::UInt8:
+			column->As<ColumnUInt8>()->Append(0);
+			return true;
+		case Type::Code::UInt16:
+			column->As<ColumnUInt16>()->Append(0);
+			return true;
+		case Type::Code::UInt32:
+			column->As<ColumnUInt32>()->Append(0);
+			return true;
+		case Type::Code::UInt64:
+			column->As<ColumnUInt64>()->Append(0);
+			return true;
+		case Type::Code::UInt128:
+			column->As<ColumnUInt128>()->Append(UInt128(0));
+			return true;
+		case Type::Code::Float32:
+			column->As<ColumnFloat32>()->Append(0.f);
+			return true;
+		case Type::Code::Float64:
+			column->As<ColumnFloat64>()->Append(0.);
+			return true;
+		case Type::Code::String:
+			column->As<ColumnString>()->Append(string_view());
+			return true;
+		case Type::Code::FixedString:
+			column->As<ColumnFixedString>()->Append(string_view());
+			return true;
+		case Type::Code::Date:
+			column->As<ColumnDate>()->Append(0);
+			return true;
+		case Type::Code::Date32:
+			column->As<ColumnDate32>()->Append(0);
+			return true;
+		case Type::Code::DateTime:
+			column->As<ColumnDateTime>()->Append(0);
+			return true;
+		case Type::Code::DateTime64:
+			column->As<ColumnDateTime64>()->Append(0);
+			return true;
+		case Type::Code::Nullable:
+		{
+			auto nullable = column->As<ColumnNullable>();
+
+			nullable->Append(true);
+			return append_default(nullable->Nested(), name);
+		}
+		case Type::Code::LowCardinality:
+			if (auto strings = column->As<ColumnLowCardinalityT<ColumnString>>())
+			{
+				strings->Append(string());
+				return true;
+			}
+
+			if (auto fixed_strings = column->As<ColumnLowCardinalityT<ColumnFixedString>>())
+			{
+				fixed_strings->Append(string());
+				return true;
+			}
+
+			zend_error(E_WARNING, "Nested %s is unsupported for column '%s'", column->Type()->GetName().c_str(), ZSTR_VAL(name));
+			return false;
+		case Type::Code::Array:
+			column->As<ColumnArray>()->AppendAsColumn(CreateColumnByType(column->Type()->As<ArrayType>()->GetItemType()->GetName()));
+			return true;
+		case Type::Code::Tuple:
+		{
+			auto tuple = column->As<ColumnTuple>();
+
+			for (size_t i = 0; i < tuple->TupleSize(); i++)
+			{
+				if (!append_default(tuple->At(i), name))
+					return false;
+			}
+
+			return true;
+		}
+		case Type::Code::Point:
+			column->As<ColumnPoint>()->Append(std::make_tuple(0., 0.));
+			return true;
+		case Type::Code::Ring:
+			column->As<ColumnRing>()->Append(vector<std::tuple<double, double>>());
+			return true;
+		case Type::Code::Polygon:
+			column->As<ColumnPolygon>()->Append(vector<vector<std::tuple<double, double>>>());
+			return true;
+		case Type::Code::MultiPolygon:
+			column->As<ColumnMultiPolygon>()->Append(vector<vector<vector<std::tuple<double, double>>>>());
+			return true;
+		case Type::Code::Map:
+		{
+			zval empty;
+			array_init(&empty);
+
+			bool result = append_map(column, Z_ARR(empty), name);
+
+			zval_ptr_dtor(&empty);
+			return result;
+		}
+		case Type::Code::Enum8:
+			column->As<ColumnEnum8>()->Append(static_cast<int8_t>(column->Type()->As<EnumType>()->BeginValueToName()->first));
+			return true;
+		case Type::Code::Enum16:
+			column->As<ColumnEnum16>()->Append(column->Type()->As<EnumType>()->BeginValueToName()->first);
+			return true;
+		case Type::Code::UUID:
+			column->As<ColumnUUID>()->Append(UUID{0, 0});
+			return true;
+		case Type::Code::IPv4:
+			column->As<ColumnIPv4>()->Append(static_cast<uint32_t>(0));
+			return true;
+		case Type::Code::IPv6:
+			column->As<ColumnIPv6>()->Append(in6addr_any);
+			return true;
+		case Type::Code::Decimal:
+		case Type::Code::Decimal32:
+		case Type::Code::Decimal64:
+		case Type::Code::Decimal128:
+			column->As<ColumnDecimal>()->Append(Int128(0));
+			return true;
+		default:
+			zend_error(E_WARNING, "Type %s (%d) is unsupported for column '%s'", column->Type()->GetName().c_str(), type, ZSTR_VAL(name));
+			return false;
+	}
+}
+
+auto ClickHouseDB::append_map(const ColumnRef &column, zend_array *pairs, const zend_string *name) -> bool
+{
+	auto map_type = column->Type()->As<MapType>();
+
+	ColumnRef keys = CreateColumnByType(map_type->GetKeyType()->GetName());
+	ColumnRef items = CreateColumnByType(map_type->GetValueType()->GetName());
+
+	zend_string *key_string;
+	zend_ulong key_index;
+	zval *item;
+	ZEND_HASH_FOREACH_KEY_VAL(pairs, key_index, key_string, item)
+	{
+		zval key;
+		if (key_string != nullptr)
+			ZVAL_STR(&key, key_string);
+		else
+			ZVAL_LONG(&key, static_cast<zend_long>(key_index));
+
+		if (!append_value(keys, &key, name) || !append_value(items, item, name))
+			return false;
+	}
+	ZEND_HASH_FOREACH_END();
+
+	auto row = make_shared<ColumnArray>(make_shared<ColumnTuple>(vector<ColumnRef>{keys->CloneEmpty(), items->CloneEmpty()}));
+	row->AppendAsColumn(make_shared<ColumnTuple>(vector<ColumnRef>{keys, items}));
+
+	column->As<ColumnMap>()->Append(make_shared<ColumnMap>(row));
 	return true;
+}
+
+auto ClickHouseDB::parse_timestamp(const char *text, const char *format, bool local, const char **rest) -> std::optional<time_t>
+{
+	tm tm_time{};
+
+	const char *end = strptime(text, format, &tm_time);
+	if (end == nullptr)
+		return std::nullopt;
+
+	if (rest != nullptr)
+		*rest = end;
+
+	return local ? mktime(&tm_time) : timegm(&tm_time);
+}
+
+auto ClickHouseDB::type_mismatch(const zend_string *name, const char *expected) -> bool
+{
+	zend_error(E_WARNING, "Value type and declared type mismatch for column '%s', %s expected", ZSTR_VAL(name), expected);
+	return false;
 }
 
 auto ClickHouseDB::is_connected() const -> bool
@@ -611,30 +1037,4 @@ auto ClickHouseDB::set_column_index(zend_array *names, zend_string *name) -> boo
 
 	zend_hash_add(names, name, &tmp);
 	return true;
-}
-
-void ClickHouseDB::add_fixed_string(Block &block, const zend_string *name, zend_ulong index, const string_view &value, zend_long size, bool nullable, bool is_null)
-{
-	if (block.GetColumnCount() <= index)
-	{
-		if (nullable)
-		{
-			auto nested = make_shared<ColumnFixedString>(size);
-			auto nulls = make_shared<ColumnUInt8>();
-
-			block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnNullable>(nested, nulls));
-		}
-		else
-			block.AppendColumn(string(ZSTR_VAL(name), ZSTR_LEN(name)), make_shared<ColumnFixedString>(size));
-	}
-
-	if (nullable)
-	{
-		auto column = block[index]->As<ColumnNullable>();
-
-		column->Nested()->As<ColumnFixedString>()->Append(value);
-		column->Nulls()->As<ColumnUInt8>()->Append(is_null ? 1 : 0);
-	}
-	else
-		block[index]->As<ColumnFixedString>()->Append(value);
 }

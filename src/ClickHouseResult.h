@@ -25,37 +25,54 @@ private:
 	deque<Block> blocks;
 
 	size_t next_row;
-	long int timezone_offset;
 
 	[[nodiscard]] auto fetch(zval *row, FetchType type) -> bool;
 
-	[[nodiscard]] auto add_type(zval *row, const ColumnRef &column, const string &name) const -> bool;
+	[[nodiscard]] auto add_column(zval *row, const ColumnRef &column, const string &name) const -> bool;
+
+	[[nodiscard]] auto to_zval(zval *value, const ColumnRef &column, size_t index) const -> bool;
+	[[nodiscard]] auto item_to_zval(zval *value, const ItemView &item, const TypeRef &type) const -> bool;
 
 	template<class T>
-	void add_long(zval *row, const ColumnRef &column, const string &name) const;
+	void set_long(zval *value, const ColumnRef &column, size_t index) const;
 
 	template<class T>
-	void add_float(zval *row, const ColumnRef &column, const string &name) const;
+	void set_float(zval *value, const ColumnRef &column, size_t index) const;
 
 	template<class T>
-	void add_string(zval *row, const ColumnRef &column, const string &name) const;
+	void set_string(zval *value, const ColumnRef &column, size_t index) const;
 
 	template<class T>
-	void add_date(zval *row, const ColumnRef &column, const string &name) const;
+	void set_date(zval *value, const ColumnRef &column, size_t index) const;
 
-	[[nodiscard]] auto add_null(zval *row, const ColumnRef &column, const string &name) const -> bool;
+	template<class T>
+	void set_enum(zval *value, const ColumnRef &column, size_t index) const;
 
-	void add_decimal(zval *row, const ColumnRef &column, const string &name) const;
+	[[nodiscard]] auto set_array(zval *value, const ColumnRef &elements) const -> bool;
+	[[nodiscard]] auto set_tuple(zval *value, const ColumnRef &column, size_t index) const -> bool;
+	[[nodiscard]] auto set_map(zval *value, const ColumnRef &column, size_t index) const -> bool;
+
+	template<class T>
+	void set_geo(zval *value, const T &data) const;
+
+	template<class V>
+	static void set_long_value(zval *value, V number);
+
+	static void set_date_value(zval *value, time_t timestamp, bool with_time);
+	static void set_datetime64_value(zval *value, int64_t ticks, size_t precision);
+	static void set_decimal_value(zval *value, Int128 number, size_t scale);
+	static void set_ipv4_value(zval *value, in_addr address);
+	static void set_ipv6_value(zval *value, const in6_addr &address);
 
 	void set_num_rows(zend_long value) const;
 
 public:
-	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count, long int timezone_offset);
+	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count);
 
 	[[nodiscard]] auto fetch_assoc(zval *row) -> bool;
 	[[nodiscard]] auto fetch_row(zval *row) -> bool;
 	[[nodiscard]] auto fetch_array(zval *row, FetchType type) -> bool;
-	[[nodiscard]] auto fetch_all(zval *rows, FetchType type) -> bool;
+	void fetch_all(zval *rows, FetchType type);
 
 	[[nodiscard]] static auto get_fetch_type(zend_long resulttype) -> FetchType;
 };
@@ -67,82 +84,98 @@ struct ClickHouseResultObject
 };
 
 template<class T>
-void ClickHouseResult::add_long(zval *row, const ColumnRef &column, const string &name) const
+void ClickHouseResult::set_long(zval *value, const ColumnRef &column, size_t index) const
 {
-	auto value = column->As<T>()->At(this->next_row);
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-compare"
-	if (value > PHP_INT_MAX || (!std::is_unsigned_v<decltype(value)> && value < PHP_INT_MIN))
-	{
-		string value_string = std::to_string(value);
-
-		if (!name.empty())
-			add_assoc_stringl_ex(row, name.c_str(), name.length(), value_string.data(), value_string.length());
-		else
-			add_next_index_stringl(row, value_string.data(), value_string.length());
-		return;
-	}
-#pragma GCC diagnostic pop
-
-	if (!name.empty())
-		add_assoc_long_ex(row, name.c_str(), name.length(), static_cast<zend_long>(value));
-	else
-		add_next_index_long(row, static_cast<zend_long>(value));
+	set_long_value(value, column->As<T>()->At(index));
 }
 
 template<class T>
-void ClickHouseResult::add_float(zval *row, const ColumnRef &column, const string &name) const
+void ClickHouseResult::set_float(zval *value, const ColumnRef &column, size_t index) const
 {
-	auto value = column->As<T>()->At(this->next_row);
-
-	if (!name.empty())
-		add_assoc_double_ex(row, name.c_str(), name.length(), value);
-	else
-		add_next_index_double(row, value);
+	ZVAL_DOUBLE(value, column->As<T>()->At(index));
 }
 
 template<class T>
-void ClickHouseResult::add_string(zval *row, const ColumnRef &column, const string &name) const
+void ClickHouseResult::set_string(zval *value, const ColumnRef &column, size_t index) const
 {
-	auto result = column->As<T>()->At(this->next_row);
-	string_view value;
+	auto result = column->As<T>()->At(index);
+	string_view text;
 	string tmp_string;
 
 	if constexpr (std::is_same_v<std::decay_t<decltype(result)>, UUID>)
 	{
 		tmp_string = uuid_to_string(result);
-		value = tmp_string;
+		text = tmp_string;
 	}
 	else if constexpr (std::is_same_v<std::decay_t<decltype(result)>, in_addr> || std::is_same_v<std::decay_t<decltype(result)>, in6_addr>)
 	{
-		tmp_string = column->As<T>()->AsString(this->next_row);
-		value = tmp_string;
+		tmp_string = column->As<T>()->AsString(index);
+		text = tmp_string;
 	}
 	else
-		value = result;
+		text = result;
 
-	if (!name.empty())
-		add_assoc_stringl_ex(row, name.c_str(), name.length(), value.data(), value.length());
-	else
-		add_next_index_stringl(row, value.data(), value.length());
+	ZVAL_STRINGL(value, text.data(), text.length());
 }
 
 template<class T>
-void ClickHouseResult::add_date(zval *row, const ColumnRef &column, const string &name) const
+void ClickHouseResult::set_date(zval *value, const ColumnRef &column, size_t index) const
 {
-	time_t value = column->As<T>()->At(this->next_row) + this->timezone_offset;
+	set_date_value(value, column->As<T>()->At(index), std::is_same_v<T, ColumnDateTime>);
+}
 
-	tm tm_time{};
-	gmtime_r(&value, &tm_time);
+template<class T>
+void ClickHouseResult::set_enum(zval *value, const ColumnRef &column, size_t index) const
+{
+	string_view name = column->As<T>()->NameAt(index);
 
-	char buffer[20];		//2020-01-01 00:00:00 + \0
-	size_t writed = strftime(buffer, sizeof(buffer), std::is_same<T, ColumnDateTime>{} ? DATETIME_FORMAT : DATE_FORMAT, &tm_time);
-	if (writed == 0)
-		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
+	ZVAL_STRINGL(value, name.data(), name.length());
+}
 
-	if (!name.empty())
-		add_assoc_stringl_ex(row, name.c_str(), name.length(), buffer, writed);
+template<class T>
+void ClickHouseResult::set_geo(zval *value, const T &data) const
+{
+	if constexpr (std::is_same_v<T, std::tuple<double, double>>)
+	{
+		array_init_size(value, 2);
+		add_next_index_double(value, std::get<0>(data));
+		add_next_index_double(value, std::get<1>(data));
+	}
 	else
-		add_next_index_stringl(row, buffer, writed);
+	{
+		array_init(value);
+
+		for (const auto &element : data)
+		{
+			zval item;
+
+			this->set_geo(&item, element);
+			add_next_index_zval(value, &item);
+		}
+	}
+}
+
+template<class V>
+void ClickHouseResult::set_long_value(zval *value, V number)
+{
+	bool overflow;
+
+	if constexpr (std::is_same_v<V, UInt128>)
+		overflow = number > static_cast<UInt128>(PHP_INT_MAX);
+	else if constexpr (std::is_same_v<V, Int128>)
+		overflow = number > static_cast<Int128>(PHP_INT_MAX) || number < static_cast<Int128>(PHP_INT_MIN);
+	else if constexpr (std::is_unsigned_v<V>)
+		overflow = number > static_cast<uint64_t>(PHP_INT_MAX);
+	else
+		overflow = number > PHP_INT_MAX || number < PHP_INT_MIN;
+
+	if (overflow)
+	{
+		string text = std::to_string(number);
+
+		ZVAL_STRINGL(value, text.data(), text.length());
+		return;
+	}
+
+	ZVAL_LONG(value, static_cast<zend_long>(number));
 }
