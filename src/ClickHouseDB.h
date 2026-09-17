@@ -27,6 +27,8 @@ private:
 
 	[[nodiscard]] static auto set_column_index(zend_array *names, zend_string *name) -> bool;
 
+	[[nodiscard]] static auto fill_columns(zend_array *values, vector<ColumnRef> &columns, zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool;
+
 	[[nodiscard]] static auto create_column(const TypeRef &type) -> ColumnRef;
 	[[nodiscard]] static auto wrap_low_cardinality(const ColumnRef &column) -> ColumnRef;
 

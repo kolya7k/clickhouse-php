@@ -161,9 +161,9 @@ void ClickHouseResult::set_long_value(zval *value, V number)
 	bool overflow;
 
 	if constexpr (std::is_same_v<V, UInt128>)
-		overflow = number > static_cast<UInt128>(PHP_INT_MAX);
+		overflow = number > UInt128(static_cast<uint64_t>(PHP_INT_MAX));
 	else if constexpr (std::is_same_v<V, Int128>)
-		overflow = number > static_cast<Int128>(PHP_INT_MAX) || number < static_cast<Int128>(PHP_INT_MIN);
+		overflow = number > Int128(PHP_INT_MAX) || number < Int128(PHP_INT_MIN);
 	else if constexpr (std::is_unsigned_v<V>)
 		overflow = number > static_cast<uint64_t>(PHP_INT_MAX);
 	else
@@ -177,5 +177,10 @@ void ClickHouseResult::set_long_value(zval *value, V number)
 		return;
 	}
 
-	ZVAL_LONG(value, static_cast<zend_long>(number));
+	if constexpr (std::is_same_v<V, UInt128>)
+		ZVAL_LONG(value, static_cast<zend_long>(Bignum::UInt128Low64(number)));
+	else if constexpr (std::is_same_v<V, Int128>)
+		ZVAL_LONG(value, static_cast<zend_long>(Bignum::Int128Low64(number)));
+	else
+		ZVAL_LONG(value, static_cast<zend_long>(number));
 }

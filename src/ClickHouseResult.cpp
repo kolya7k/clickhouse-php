@@ -462,8 +462,11 @@ void ClickHouseResult::set_datetime64_value(zval *value, int64_t ticks, size_t p
 
 void ClickHouseResult::set_decimal_value(zval *value, Int128 number, size_t scale)
 {
-	bool negative = number < 0;
-	string digits = std::to_string(negative ? Int128(0) - number : number);
+	string digits = std::to_string(number);
+
+	bool negative = digits[0] == '-';
+	if (negative)
+		digits.erase(0, 1);
 
 	if (digits.length() <= scale)
 		digits.insert(0, scale + 1 - digits.length(), '0');

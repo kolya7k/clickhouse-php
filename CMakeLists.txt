@@ -25,6 +25,7 @@ include_directories(${PHP_SOURCE}/TSRM)
 
 include_directories(src)
 include_directories(clickhouse-cpp)
+include_directories(clickhouse-cpp/clickhouse/cityhash)
 
 add_custom_target(configure
 	COMMAND phpize && ./configure

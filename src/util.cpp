@@ -5,36 +5,12 @@ namespace std
 
 auto to_string(Int128 value) -> string
 {
-	if (value == 0)
-		return {"0"};
-
-	bool negative = value < 0;
-
-	UInt128 magnitude = negative ? UInt128(0) - static_cast<UInt128>(value) : static_cast<UInt128>(value);
-
-	string result = to_string(magnitude);
-	if (negative)
-		result.insert(result.begin(), '-');
-
-	return result;
+	return Bignum::Int128ToString(value);
 }
 
 auto to_string(UInt128 value) -> string
 {
-	if (value == 0)
-		return {"0"};
-
-	char buffer[64] = {0};
-	char *end = buffer + sizeof(buffer) - 1;
-	*end = '\0';
-
-	while (value != 0)
-	{
-		*--end = "0123456789"[static_cast<int>(value % 10)];
-		value /= 10;
-	}
-
-	return {end};
+	return Bignum::UInt128ToString(value);
 }
 
 auto hex_digit(unsigned v) -> char
@@ -113,45 +89,28 @@ auto string_to_uuid(string_view text) -> std::optional<UUID>
 	return UUID{parts[0], parts[1]};
 }
 
-auto string_to_uint128(string_view text) -> std::optional<UInt128>
-{
-	if (text.empty())
-		return std::nullopt;
-
-	UInt128 result = 0;
-	for (char c : text)
-	{
-		if (c < '0' || c > '9')
-			return std::nullopt;
-
-		UInt128 next = result * 10 + static_cast<unsigned>(c - '0');
-		if (next / 10 != result)
-			return std::nullopt;
-
-		result = next;
-	}
-
-	return result;
-}
-
 auto string_to_int128(string_view text) -> std::optional<Int128>
 {
-	bool negative = !text.empty() && text[0] == '-';
-	if (negative || (!text.empty() && text[0] == '+'))
-		text.remove_prefix(1);
-
-	std::optional<UInt128> magnitude = string_to_uint128(text);
-	if (!magnitude)
+	try
+	{
+		return Bignum::StringToInt128(text);
+	}
+	catch (const ValidationError&)
+	{
 		return std::nullopt;
+	}
+}
 
-	UInt128 limit = static_cast<UInt128>(std::numeric_limits<Int128>::max()) + (negative ? 1 : 0);
-	if (*magnitude > limit)
+auto string_to_uint128(string_view text) -> std::optional<UInt128>
+{
+	try
+	{
+		return Bignum::StringToUInt128(text);
+	}
+	catch (const ValidationError&)
+	{
 		return std::nullopt;
-
-	if (negative)
-		return static_cast<Int128>(UInt128(0) - *magnitude);
-
-	return static_cast<Int128>(*magnitude);
+	}
 }
 
 auto pow10_int64(size_t power) -> int64_t

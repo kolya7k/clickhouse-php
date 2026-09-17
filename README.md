@@ -9,11 +9,12 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 ## Dependencies
 * PHP 7.0+
 * GCC 10+
-* openssl
 * liblz4
-* libabsl
+* libzstd
 
 ## Building
+
+clickhouse-cpp is compiled into the extension from the submodule (with its cityhash), lz4 and zstd are taken from the system.
 ```sh
 $ git clone --recursive --depth=1 https://github.com/kolya7k/clickhouse-php.git
 $ cd clickhouse-php

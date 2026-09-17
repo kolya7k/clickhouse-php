@@ -246,17 +246,13 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 		return false;
 	}
 
-	Block description_block;
-
-	this->client->InsertQuery(insert_query, [&description_block] (const Block &block)
-	{
-		description_block = block;
-	});
+	Block description_block = this->client->BeginInsert(Query(insert_query));
 
 	if (description_block.GetColumnCount() != columns_count)
 	{
 		zend_error(E_WARNING, "Table %s description has %lu columns but %lu requested", table_name.c_str(), description_block.GetColumnCount(), columns_count);
 		zend_array_destroy(Z_ARR(column_names));
+		this->client->EndInsert();
 		return false;
 	}
 
@@ -265,28 +261,55 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 		columns.push_back(create_column(description_block[i]->Type()));
 
 	zend_long rows = 0;
+	bool filled = fill_columns(values, columns, Z_ARR(column_names), fields_data, numeric_keys, rows);
 
+	zend_array_destroy(Z_ARR(column_names));
+
+	if (!filled)
+	{
+		this->client->EndInsert();
+		return false;
+	}
+
+	Block block;
+	for (size_t i = 0; i < columns_count; i++)
+	{
+		ColumnRef column = columns[i];
+		if (description_block[i]->Type()->GetCode() == Type::Code::LowCardinality)
+			column = wrap_low_cardinality(column);
+
+		block.AppendColumn(description_block.GetColumnName(i), column);
+	}
+
+	block.RefreshRowCount();
+
+	this->client->SendInsertBlock(block);
+	this->client->EndInsert();
+
+	this->set_affected_rows(rows);
+	return true;
+}
+
+auto ClickHouseDB::fill_columns(zend_array *values, vector<ColumnRef> &columns, zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool
+{
 	Bucket *row_bucket;
 	ZEND_HASH_FOREACH_BUCKET(values, row_bucket)
 	{
 		if (row_bucket->key != nullptr)
 		{
 			zend_error(E_WARNING, "Values key must be number but got string '%s'", ZSTR_VAL(row_bucket->key));
-			zend_array_destroy(Z_ARR(column_names));
 			return false;
 		}
 
 		if (Z_TYPE(row_bucket->val) != IS_ARRAY)
 		{
 			zend_error(E_WARNING, "Values must be array but got type %d", Z_TYPE(row_bucket->val));
-			zend_array_destroy(Z_ARR(column_names));
 			return false;
 		}
 
-		if (zend_hash_num_elements(Z_ARR(row_bucket->val)) != columns_count)
+		if (zend_hash_num_elements(Z_ARR(row_bucket->val)) != columns.size())
 		{
-			zend_error(E_WARNING, "Row %lu has %u columns but %lu expected", row_bucket->h, zend_hash_num_elements(Z_ARR(row_bucket->val)), columns_count);
-			zend_array_destroy(Z_ARR(column_names));
+			zend_error(E_WARNING, "Row %lu has %u columns but %lu expected", row_bucket->h, zend_hash_num_elements(Z_ARR(row_bucket->val)), columns.size());
 			return false;
 		}
 
@@ -302,7 +325,6 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 			if (is_numeric_key != numeric_keys)
 			{
 				zend_error(E_WARNING, "Mixing numeric and string field names is not allowed");
-				zend_array_destroy(Z_ARR(column_names));
 				return false;
 			}
 
@@ -311,7 +333,6 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 				if (column_bucket->h >= fields_data.size())
 				{
 					zend_error(E_WARNING, "Field name is not provided for column %lu at row %lu", column_bucket->h, row_bucket->h);
-					zend_array_destroy(Z_ARR(column_names));
 					return false;
 				}
 
@@ -323,11 +344,10 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 			{
 				name = column_bucket->key;
 
-				zval *index_val = zend_hash_find(Z_ARR(column_names), name);
+				zval *index_val = zend_hash_find(column_names, name);
 				if (index_val == nullptr)
 				{
 					zend_error(E_WARNING, "Unexpected column '%s', columns must be the same for each row", ZSTR_VAL(name));
-					zend_array_destroy(Z_ARR(column_names));
 					return false;
 				}
 
@@ -335,32 +355,12 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 			}
 
 			if (!append_value(columns[index], &column_bucket->val, name))
-			{
-				zend_array_destroy(Z_ARR(column_names));
 				return false;
-			}
 		}
 		ZEND_HASH_FOREACH_END();
 	}
 	ZEND_HASH_FOREACH_END();
 
-	zend_array_destroy(Z_ARR(column_names));
-
-	Block block;
-	for (size_t i = 0; i < columns_count; i++)
-	{
-		ColumnRef column = columns[i];
-		if (description_block[i]->Type()->GetCode() == Type::Code::LowCardinality)
-			column = wrap_low_cardinality(column);
-
-		block.AppendColumn(description_block.GetColumnName(i), column);
-	}
-
-	block.RefreshRowCount();
-
-	this->client->InsertData(block);
-
-	this->set_affected_rows(rows);
 	return true;
 }
 
