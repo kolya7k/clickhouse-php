@@ -15,6 +15,8 @@ Written in C++ using [clickhouse-cpp](https://github.com/ClickHouse/clickhouse-c
 ## Building
 
 clickhouse-cpp is compiled into the extension from the submodule (with its cityhash), lz4 and zstd are taken from the system.
+
+Remote build from Windows, same as the game servers: `bash remote_build.sh` uploads the tree to the host from `.env.local.defaults` (`REMOTE_USER` in `.env.local`) and runs `cmake` there; `CMakeLists.txt` copies the sources into `build/<type>/ext` and runs `phpize`, `configure` and `make` in that copy, then prints the module version. The `install-clickhouse-php` target runs `make install` (needs root). CLion builds the same way through the remote toolchain and the `Release_debug` profile from `.idea/cmake.xml`.
 ```sh
 $ git clone --recursive --depth=1 https://github.com/kolya7k/clickhouse-php.git
 $ cd clickhouse-php

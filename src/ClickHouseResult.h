@@ -30,30 +30,32 @@ private:
 
 	[[nodiscard]] auto add_column(zval *row, const ColumnRef &column, const string &name) const -> bool;
 
-	[[nodiscard]] auto to_zval(zval *value, const ColumnRef &column, size_t index) const -> bool;
-	[[nodiscard]] auto item_to_zval(zval *value, const ItemView &item, const TypeRef &type) const -> bool;
+	void set_num_rows(zend_long value) const;
+
+	[[nodiscard]] static auto to_zval(zval *value, const ColumnRef &column, size_t index) -> bool;
+	[[nodiscard]] static auto item_to_zval(zval *value, const ItemView &item, const TypeRef &type) -> bool;
 
 	template<class T>
-	void set_long(zval *value, const ColumnRef &column, size_t index) const;
+	static void set_long(zval *value, const ColumnRef &column, size_t index);
 
 	template<class T>
-	void set_float(zval *value, const ColumnRef &column, size_t index) const;
+	static void set_float(zval *value, const ColumnRef &column, size_t index);
 
 	template<class T>
-	void set_string(zval *value, const ColumnRef &column, size_t index) const;
+	static void set_string(zval *value, const ColumnRef &column, size_t index);
 
 	template<class T>
-	void set_date(zval *value, const ColumnRef &column, size_t index) const;
+	static void set_date(zval *value, const ColumnRef &column, size_t index);
 
 	template<class T>
-	void set_enum(zval *value, const ColumnRef &column, size_t index) const;
+	static void set_enum(zval *value, const ColumnRef &column, size_t index);
 
-	[[nodiscard]] auto set_array(zval *value, const ColumnRef &elements) const -> bool;
-	[[nodiscard]] auto set_tuple(zval *value, const ColumnRef &column, size_t index) const -> bool;
-	[[nodiscard]] auto set_map(zval *value, const ColumnRef &column, size_t index) const -> bool;
+	[[nodiscard]] static auto set_array(zval *value, const ColumnRef &elements) -> bool;
+	[[nodiscard]] static auto set_tuple(zval *value, const ColumnRef &column, size_t index) -> bool;
+	[[nodiscard]] static auto set_map(zval *value, const ColumnRef &column, size_t index) -> bool;
 
 	template<class T>
-	void set_geo(zval *value, const T &data) const;
+	static void set_geo(zval *value, const T &data);
 
 	template<class V>
 	static void set_long_value(zval *value, V number);
@@ -64,10 +66,8 @@ private:
 	static void set_ipv4_value(zval *value, in_addr address);
 	static void set_ipv6_value(zval *value, const in6_addr &address);
 
-	void set_num_rows(zend_long value) const;
-
 public:
-	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count);
+	ClickHouseResult(zend_object *zend_this, deque<Block> blocks, zend_long rows_count);
 
 	[[nodiscard]] auto fetch_assoc(zval *row) -> bool;
 	[[nodiscard]] auto fetch_row(zval *row) -> bool;
@@ -84,19 +84,19 @@ struct ClickHouseResultObject
 };
 
 template<class T>
-void ClickHouseResult::set_long(zval *value, const ColumnRef &column, size_t index) const
+void ClickHouseResult::set_long(zval *value, const ColumnRef &column, size_t index)
 {
 	set_long_value(value, column->As<T>()->At(index));
 }
 
 template<class T>
-void ClickHouseResult::set_float(zval *value, const ColumnRef &column, size_t index) const
+void ClickHouseResult::set_float(zval *value, const ColumnRef &column, size_t index)
 {
-	ZVAL_DOUBLE(value, column->As<T>()->At(index));
+	ZVAL_DOUBLE(value, static_cast<double>(column->As<T>()->At(index)));
 }
 
 template<class T>
-void ClickHouseResult::set_string(zval *value, const ColumnRef &column, size_t index) const
+void ClickHouseResult::set_string(zval *value, const ColumnRef &column, size_t index)
 {
 	auto result = column->As<T>()->At(index);
 	string_view text;
@@ -119,13 +119,13 @@ void ClickHouseResult::set_string(zval *value, const ColumnRef &column, size_t i
 }
 
 template<class T>
-void ClickHouseResult::set_date(zval *value, const ColumnRef &column, size_t index) const
+void ClickHouseResult::set_date(zval *value, const ColumnRef &column, size_t index)
 {
 	set_date_value(value, column->As<T>()->At(index), std::is_same_v<T, ColumnDateTime>);
 }
 
 template<class T>
-void ClickHouseResult::set_enum(zval *value, const ColumnRef &column, size_t index) const
+void ClickHouseResult::set_enum(zval *value, const ColumnRef &column, size_t index)
 {
 	string_view name = column->As<T>()->NameAt(index);
 
@@ -133,7 +133,7 @@ void ClickHouseResult::set_enum(zval *value, const ColumnRef &column, size_t ind
 }
 
 template<class T>
-void ClickHouseResult::set_geo(zval *value, const T &data) const
+void ClickHouseResult::set_geo(zval *value, const T &data)
 {
 	if constexpr (std::is_same_v<T, std::tuple<double, double>>)
 	{
@@ -149,7 +149,7 @@ void ClickHouseResult::set_geo(zval *value, const T &data) const
 		{
 			zval item;
 
-			this->set_geo(&item, element);
+			set_geo(&item, element);
 			add_next_index_zval(value, &item);
 		}
 	}
@@ -161,7 +161,7 @@ void ClickHouseResult::set_long_value(zval *value, V number)
 	bool overflow;
 
 	if constexpr (std::is_same_v<V, UInt128>)
-		overflow = number > UInt128(static_cast<uint64_t>(PHP_INT_MAX));
+		overflow = number > UInt128(PHP_INT_MAX);
 	else if constexpr (std::is_same_v<V, Int128>)
 		overflow = number > Int128(PHP_INT_MAX) || number < Int128(PHP_INT_MIN);
 	else if constexpr (std::is_unsigned_v<V>)
@@ -171,7 +171,14 @@ void ClickHouseResult::set_long_value(zval *value, V number)
 
 	if (overflow)
 	{
-		string text = std::to_string(number);
+		string text;
+
+		if constexpr (std::is_same_v<V, UInt128>)
+			text = Bignum::UInt128ToString(number);
+		else if constexpr (std::is_same_v<V, Int128>)
+			text = Bignum::Int128ToString(number);
+		else
+			text = std::to_string(number);
 
 		ZVAL_STRINGL(value, text.data(), text.length());
 		return;

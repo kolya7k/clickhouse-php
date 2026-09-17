@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeSharedSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Release_debug" ENABLED="true" GENERATION_DIR="build/release_debug" CONFIG_NAME="Release_debug" TOOLCHAIN_NAME="Bottle" GENERATION_OPTIONS="-G Ninja" BUILD_OPTIONS="-v -j 16" />
+    </configurations>
+  </component>
+</project>

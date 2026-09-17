@@ -5,13 +5,25 @@
 #include "ClickHouseDB.h"
 #include "ClickHouseResult.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wignored-qualifiers"
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+#pragma GCC diagnostic ignored "-Wredundant-decls"
+#include <ext/standard/info.h>
+#pragma GCC diagnostic pop
+
 static constexpr auto MODULE_VERSION = "1.1.0";
 
-struct ClickHouseObject
+namespace
 {
-	ClickHouseDB *impl;
-	zend_object std;
-};
+
+	struct ClickHouseObject
+	{
+		ClickHouseDB *impl;
+		zend_object std;
+	};
+
+}
 
 #define Z_CLICKHOUSE(zv) ((ClickHouseObject*)((char*)(zv) - XtOffsetOf(ClickHouseObject, std)))
 #define Z_CLICKHOUSE_P(zv) Z_CLICKHOUSE(Z_OBJ_P(zv))
@@ -320,12 +332,12 @@ typedef void (*zend_ctor_type)(void*);
 
 zend_module_entry clickhouse_module_entry = {
 	STANDARD_MODULE_HEADER,
-	"clickhouse",								/* Extension name */
+	"clickhouse",							/* Extension name */
 	extension_functions,							/* zend_function_entry */
-	PHP_MINIT(clickhouse),							/* PHP_MINIT - Module initialization */
-	nullptr,								/* PHP_MSHUTDOWN - Module shutdown */
-	PHP_RINIT(clickhouse),							/* PHP_RINIT - Request initialization */
-	nullptr,								/* PHP_RSHUTDOWN - Request shutdown */
+	PHP_MINIT(clickhouse),					/* PHP_MINIT - Module initialization */
+	nullptr,						/* PHP_MSHUTDOWN - Module shutdown */
+	PHP_RINIT(clickhouse),					/* PHP_RINIT - Request initialization */
+	nullptr,						/* PHP_RSHUTDOWN - Request shutdown */
 	PHP_MINFO(clickhouse),							/* PHP_MINFO - Module info */
 	MODULE_VERSION,								/* Version */
 	ZEND_MODULE_GLOBALS(clickhouse),

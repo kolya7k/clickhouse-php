@@ -2,7 +2,7 @@
 
 #include <arpa/inet.h>
 
-ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, size_t rows_count):
+ClickHouseResult::ClickHouseResult(zend_object *zend_this, deque<Block> blocks, zend_long rows_count):
 	zend_this(zend_this), blocks(std::move(blocks)), next_row(0)
 {
 	this->set_num_rows(rows_count);
@@ -59,7 +59,7 @@ auto ClickHouseResult::add_column(zval *row, const ColumnRef &column, const stri
 {
 	zval value;
 
-	if (!this->to_zval(&value, column, this->next_row))
+	if (!to_zval(&value, column, this->next_row))
 		return false;
 
 	if (!name.empty())
@@ -70,7 +70,19 @@ auto ClickHouseResult::add_column(zval *row, const ColumnRef &column, const stri
 	return true;
 }
 
-auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t index) const -> bool
+void ClickHouseResult::set_num_rows(zend_long value) const
+{
+#if PHP_API_VERSION >= 20200930
+	zend_update_property_long(this->zend_this->ce, this->zend_this, "num_rows", sizeof("num_rows") - 1, value);
+#else
+	zval zv;
+	ZVAL_OBJ(&zv, this->zend_this);
+
+	zend_update_property_long(this->zend_this->ce, &zv, "num_rows", sizeof("num_rows") - 1, value);
+#endif
+}
+
+auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t index) -> bool
 {
 	// ReSharper disable once CppTooWideScope
 	Type::Code type_code = column->Type()->GetCode();
@@ -81,49 +93,49 @@ auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t inde
 			ZVAL_NULL(value);
 			break;
 		case Type::Code::Int8:
-			this->set_long<ColumnInt8>(value, column, index);
+			set_long<ColumnInt8>(value, column, index);
 			break;
 		case Type::Code::Int16:
-			this->set_long<ColumnInt16>(value, column, index);
+			set_long<ColumnInt16>(value, column, index);
 			break;
 		case Type::Code::Int32:
-			this->set_long<ColumnInt32>(value, column, index);
+			set_long<ColumnInt32>(value, column, index);
 			break;
 		case Type::Code::Int64:
-			this->set_long<ColumnInt64>(value, column, index);
+			set_long<ColumnInt64>(value, column, index);
 			break;
 		case Type::Code::Int128:
-			this->set_long<ColumnInt128>(value, column, index);
+			set_long<ColumnInt128>(value, column, index);
 			break;
 		case Type::Code::UInt8:
-			this->set_long<ColumnUInt8>(value, column, index);
+			set_long<ColumnUInt8>(value, column, index);
 			break;
 		case Type::Code::UInt16:
-			this->set_long<ColumnUInt16>(value, column, index);
+			set_long<ColumnUInt16>(value, column, index);
 			break;
 		case Type::Code::UInt32:
-			this->set_long<ColumnUInt32>(value, column, index);
+			set_long<ColumnUInt32>(value, column, index);
 			break;
 		case Type::Code::UInt64:
-			this->set_long<ColumnUInt64>(value, column, index);
+			set_long<ColumnUInt64>(value, column, index);
 			break;
 		case Type::Code::UInt128:
-			this->set_long<ColumnUInt128>(value, column, index);
+			set_long<ColumnUInt128>(value, column, index);
 			break;
 		case Type::Code::Float32:
-			this->set_float<ColumnFloat32>(value, column, index);
+			set_float<ColumnFloat32>(value, column, index);
 			break;
 		case Type::Code::Float64:
-			this->set_float<ColumnFloat64>(value, column, index);
+			set_float<ColumnFloat64>(value, column, index);
 			break;
 		case Type::Code::String:
-			this->set_string<ColumnString>(value, column, index);
+			set_string<ColumnString>(value, column, index);
 			break;
 		case Type::Code::FixedString:
-			this->set_string<ColumnFixedString>(value, column, index);
+			set_string<ColumnFixedString>(value, column, index);
 			break;
 		case Type::Code::DateTime:
-			this->set_date<ColumnDateTime>(value, column, index);
+			set_date<ColumnDateTime>(value, column, index);
 			break;
 		case Type::Code::DateTime64:
 		{
@@ -133,10 +145,10 @@ auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t inde
 			break;
 		}
 		case Type::Code::Date:
-			this->set_date<ColumnDate>(value, column, index);
+			set_date<ColumnDate>(value, column, index);
 			break;
 		case Type::Code::Date32:
-			this->set_date<ColumnDate32>(value, column, index);
+			set_date<ColumnDate32>(value, column, index);
 			break;
 		case Type::Code::Nullable:
 		{
@@ -148,40 +160,40 @@ auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t inde
 				break;
 			}
 
-			return this->to_zval(value, nullable->Nested(), index);
+			return to_zval(value, nullable->Nested(), index);
 		}
 		case Type::Code::Array:
-			return this->set_array(value, column->As<ColumnArray>()->GetAsColumn(index));
+			return set_array(value, column->As<ColumnArray>()->GetAsColumn(index));
 		case Type::Code::Tuple:
-			return this->set_tuple(value, column, index);
+			return set_tuple(value, column, index);
 		case Type::Code::Point:
-			this->set_geo(value, column->As<ColumnPoint>()->At(index));
+			set_geo(value, column->As<ColumnPoint>()->At(index));
 			break;
 		case Type::Code::Ring:
-			this->set_geo(value, column->As<ColumnRing>()->At(index));
+			set_geo(value, column->As<ColumnRing>()->At(index));
 			break;
 		case Type::Code::Polygon:
-			this->set_geo(value, column->As<ColumnPolygon>()->At(index));
+			set_geo(value, column->As<ColumnPolygon>()->At(index));
 			break;
 		case Type::Code::MultiPolygon:
-			this->set_geo(value, column->As<ColumnMultiPolygon>()->At(index));
+			set_geo(value, column->As<ColumnMultiPolygon>()->At(index));
 			break;
 		case Type::Code::Map:
-			return this->set_map(value, column, index);
+			return set_map(value, column, index);
 		case Type::Code::Enum8:
-			this->set_enum<ColumnEnum8>(value, column, index);
+			set_enum<ColumnEnum8>(value, column, index);
 			break;
 		case Type::Code::Enum16:
-			this->set_enum<ColumnEnum16>(value, column, index);
+			set_enum<ColumnEnum16>(value, column, index);
 			break;
 		case Type::Code::UUID:
-			this->set_string<ColumnUUID>(value, column, index);
+			set_string<ColumnUUID>(value, column, index);
 			break;
 		case Type::Code::IPv4:
-			this->set_string<ColumnIPv4>(value, column, index);
+			set_string<ColumnIPv4>(value, column, index);
 			break;
 		case Type::Code::IPv6:
-			this->set_string<ColumnIPv6>(value, column, index);
+			set_string<ColumnIPv6>(value, column, index);
 			break;
 		case Type::Code::Decimal:
 		case Type::Code::Decimal32:
@@ -194,7 +206,7 @@ auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t inde
 			break;
 		}
 		case Type::Code::LowCardinality:
-			return this->item_to_zval(value, column->GetItem(index), column->As<ColumnLowCardinality>()->GetNestedType());
+			return item_to_zval(value, column->GetItem(index), column->As<ColumnLowCardinality>()->GetNestedType());
 		default:
 			zend_error(E_WARNING, "Type %s (%d) is unsupported", column->Type()->GetName().c_str(), type_code);
 			return false;
@@ -203,7 +215,7 @@ auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t inde
 	return true;
 }
 
-auto ClickHouseResult::item_to_zval(zval *value, const ItemView &item, const TypeRef &type) const -> bool
+auto ClickHouseResult::item_to_zval(zval *value, const ItemView &item, const TypeRef &type) -> bool
 {
 	if (item.type == Type::Code::Void)
 	{
@@ -248,7 +260,7 @@ auto ClickHouseResult::item_to_zval(zval *value, const ItemView &item, const Typ
 			set_long_value(value, item.get<UInt128>());
 			break;
 		case Type::Code::Float32:
-			ZVAL_DOUBLE(value, item.get<float>());
+			ZVAL_DOUBLE(value, static_cast<double>(item.get<float>()));
 			break;
 		case Type::Code::Float64:
 			ZVAL_DOUBLE(value, item.get<double>());
@@ -322,7 +334,7 @@ auto ClickHouseResult::item_to_zval(zval *value, const ItemView &item, const Typ
 			memcpy(&uuid.first, item.AsBinaryData().data(), sizeof(uint64_t));
 			memcpy(&uuid.second, item.AsBinaryData().data() + sizeof(uint64_t), sizeof(uint64_t));
 
-			string text = std::uuid_to_string(uuid);
+			string text = uuid_to_string(uuid);
 
 			ZVAL_STRINGL(value, text.data(), text.length());
 			break;
@@ -335,7 +347,7 @@ auto ClickHouseResult::item_to_zval(zval *value, const ItemView &item, const Typ
 	return true;
 }
 
-auto ClickHouseResult::set_array(zval *value, const ColumnRef &elements) const -> bool
+auto ClickHouseResult::set_array(zval *value, const ColumnRef &elements) -> bool
 {
 	size_t size = elements->Size();
 
@@ -345,7 +357,7 @@ auto ClickHouseResult::set_array(zval *value, const ColumnRef &elements) const -
 	{
 		zval element;
 
-		if (!this->to_zval(&element, elements, i))
+		if (!to_zval(&element, elements, i))
 		{
 			zval_ptr_dtor(value);
 			return false;
@@ -357,7 +369,7 @@ auto ClickHouseResult::set_array(zval *value, const ColumnRef &elements) const -
 	return true;
 }
 
-auto ClickHouseResult::set_tuple(zval *value, const ColumnRef &column, size_t index) const -> bool
+auto ClickHouseResult::set_tuple(zval *value, const ColumnRef &column, size_t index) -> bool
 {
 	auto tuple = column->As<ColumnTuple>();
 	size_t size = tuple->TupleSize();
@@ -368,7 +380,7 @@ auto ClickHouseResult::set_tuple(zval *value, const ColumnRef &column, size_t in
 	{
 		zval element;
 
-		if (!this->to_zval(&element, tuple->At(i), index))
+		if (!to_zval(&element, tuple->At(i), index))
 		{
 			zval_ptr_dtor(value);
 			return false;
@@ -380,7 +392,7 @@ auto ClickHouseResult::set_tuple(zval *value, const ColumnRef &column, size_t in
 	return true;
 }
 
-auto ClickHouseResult::set_map(zval *value, const ColumnRef &column, size_t index) const -> bool
+auto ClickHouseResult::set_map(zval *value, const ColumnRef &column, size_t index) -> bool
 {
 	auto pairs = column->As<ColumnMap>()->GetAsColumn(index)->As<ColumnTuple>();
 	size_t size = pairs->Size();
@@ -392,13 +404,13 @@ auto ClickHouseResult::set_map(zval *value, const ColumnRef &column, size_t inde
 		zval key;
 		zval element;
 
-		if (!this->to_zval(&key, pairs->At(0), i))
+		if (!to_zval(&key, pairs->At(0), i))
 		{
 			zval_ptr_dtor(value);
 			return false;
 		}
 
-		if (!this->to_zval(&element, pairs->At(1), i))
+		if (!to_zval(&element, pairs->At(1), i))
 		{
 			zval_ptr_dtor(&key);
 			zval_ptr_dtor(value);
@@ -462,7 +474,7 @@ void ClickHouseResult::set_datetime64_value(zval *value, int64_t ticks, size_t p
 
 void ClickHouseResult::set_decimal_value(zval *value, Int128 number, size_t scale)
 {
-	string digits = std::to_string(number);
+	string digits = Bignum::Int128ToString(number);
 
 	bool negative = digits[0] == '-';
 	if (negative)
@@ -498,18 +510,6 @@ void ClickHouseResult::set_ipv6_value(zval *value, const in6_addr &address)
 		text = "";
 
 	ZVAL_STRING(value, text);
-}
-
-void ClickHouseResult::set_num_rows(zend_long value) const
-{
-#if PHP_API_VERSION >= 20200930
-	zend_update_property_long(this->zend_this->ce, this->zend_this, "num_rows", sizeof("num_rows") - 1, value);
-#else
-	zval zv;
-	ZVAL_OBJ(&zv, this->zend_this);
-
-	zend_update_property_long(this->zend_this->ce, &zv, "num_rows", sizeof("num_rows") - 1, value);
-#endif
 }
 
 auto ClickHouseResult::fetch_assoc(zval *row) -> bool

@@ -4,7 +4,7 @@
 
 #include "clickhouse/columns/factory.h"
 
-__inline static auto clickhouse_result_new(deque<Block> blocks, size_t rows_count) -> zend_object *
+__inline static auto clickhouse_result_new(deque<Block> blocks, zend_long rows_count) -> zend_object *
 {
 	auto obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
 
@@ -257,6 +257,8 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	}
 
 	vector<ColumnRef> columns;
+	columns.reserve(columns_count);
+
 	for (size_t i = 0; i < columns_count; i++)
 		columns.push_back(create_column(description_block[i]->Type()));
 
@@ -290,7 +292,7 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	return true;
 }
 
-auto ClickHouseDB::fill_columns(zend_array *values, vector<ColumnRef> &columns, zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool
+auto ClickHouseDB::fill_columns(const zend_array *values, const vector<ColumnRef> &columns, const zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool
 {
 	Bucket *row_bucket;
 	ZEND_HASH_FOREACH_BUCKET(values, row_bucket)
@@ -889,7 +891,7 @@ auto ClickHouseDB::append_default(const ColumnRef &column, const zend_string *na
 	}
 }
 
-auto ClickHouseDB::append_map(const ColumnRef &column, zend_array *pairs, const zend_string *name) -> bool
+auto ClickHouseDB::append_map(const ColumnRef &column, const zend_array *pairs, const zend_string *name) -> bool
 {
 	auto map_type = column->Type()->As<MapType>();
 
@@ -912,8 +914,8 @@ auto ClickHouseDB::append_map(const ColumnRef &column, zend_array *pairs, const 
 	}
 	ZEND_HASH_FOREACH_END();
 
-	auto row = make_shared<ColumnArray>(make_shared<ColumnTuple>(vector<ColumnRef>{keys->CloneEmpty(), items->CloneEmpty()}));
-	row->AppendAsColumn(make_shared<ColumnTuple>(vector<ColumnRef>{keys, items}));
+	auto row = make_shared<ColumnArray>(make_shared<ColumnTuple>(vector{keys->CloneEmpty(), items->CloneEmpty()}));
+	row->AppendAsColumn(make_shared<ColumnTuple>(vector{keys, items}));
 
 	column->As<ColumnMap>()->Append(make_shared<ColumnMap>(row));
 	return true;
@@ -974,7 +976,7 @@ void ClickHouseDB::set_affected_rows(zend_long value) const
 #endif
 }
 
-auto ClickHouseDB::parse_fields(zend_array *fields, vector<zend_string *> &data) -> bool
+auto ClickHouseDB::parse_fields(const zend_array *fields, vector<zend_string *> &data) -> bool
 {
 	if (fields == nullptr)
 		return true;

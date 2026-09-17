@@ -1,19 +1,6 @@
 #include "util.h"
 
-namespace std
-{
-
-auto to_string(Int128 value) -> string
-{
-	return Bignum::Int128ToString(value);
-}
-
-auto to_string(UInt128 value) -> string
-{
-	return Bignum::UInt128ToString(value);
-}
-
-auto hex_digit(unsigned v) -> char
+static auto hex_digit(unsigned v) -> char
 {
 	return v < 10 ? static_cast<char>('0' + v) : static_cast<char>('a' + (v - 10));
 }
@@ -46,8 +33,6 @@ auto uuid_to_string(const UUID &uuid) -> string
 	put_hex( lo	& 0xffffffffffffULL, 12);
 
 	return out;
-}
-
 }
 
 static auto hex_value(char c) -> int

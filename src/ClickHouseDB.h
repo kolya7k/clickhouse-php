@@ -7,10 +7,10 @@ class ClickHouseDB
 private:
 	static constexpr uint32_t DEFAULT_PORT = 9000;
 
-	inline static const string DEFAULT_HOST = "127.0.0.1";
-	inline static const string DEFAULT_USERNAME = "default";
-	inline static const string DEFAULT_PASSWD;
-	inline static const string DEFAULT_DBNAME = "default";
+	static constexpr string DEFAULT_HOST = "127.0.0.1";
+	static constexpr string DEFAULT_USERNAME = "default";
+	static constexpr string DEFAULT_PASSWD = "";
+	static constexpr string DEFAULT_DBNAME = "default";
 
 	zend_object *zend_this;
 
@@ -23,18 +23,18 @@ private:
 	void set_error(zend_long code, const char *message) const;
 	void set_affected_rows(zend_long value) const;
 
-	[[nodiscard]] static auto parse_fields(zend_array *fields, vector<zend_string *> &data) -> bool;
+	[[nodiscard]] static auto parse_fields(const zend_array *fields, vector<zend_string *> &data) -> bool;
 
 	[[nodiscard]] static auto set_column_index(zend_array *names, zend_string *name) -> bool;
 
-	[[nodiscard]] static auto fill_columns(zend_array *values, vector<ColumnRef> &columns, zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool;
+	[[nodiscard]] static auto fill_columns(const zend_array *values, const vector<ColumnRef> &columns, const zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool;
 
 	[[nodiscard]] static auto create_column(const TypeRef &type) -> ColumnRef;
 	[[nodiscard]] static auto wrap_low_cardinality(const ColumnRef &column) -> ColumnRef;
 
 	[[nodiscard]] static auto append_value(const ColumnRef &column, zval *value, const zend_string *name) -> bool;
 	[[nodiscard]] static auto append_default(const ColumnRef &column, const zend_string *name) -> bool;
-	[[nodiscard]] static auto append_map(const ColumnRef &column, zend_array *pairs, const zend_string *name) -> bool;
+	[[nodiscard]] static auto append_map(const ColumnRef &column, const zend_array *pairs, const zend_string *name) -> bool;
 
 	[[nodiscard]] static auto parse_timestamp(const char *text, const char *format, bool local, const char **rest) -> std::optional<time_t>;
 
