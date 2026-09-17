@@ -137,6 +137,23 @@
 	check("error set", true, str_contains($ch->error, "nowhere"));
 	check("affected_rows on error", -1, $ch->affected_rows);
 	check("errno reset", 0, $ch->query("SELECT 1") ? $ch->errno : -1);
+	check("syntax error", false, @$ch->query("SELEC 1"));
+	check("syntax error code", 62, $ch->errno);
+	check("unknown table", false, @$ch->query("SELECT 1 FROM no_such_table"));
+	check("unknown table code", 60, $ch->errno);
+	check("unknown database", false, @$ch->query("SELECT 1 FROM no_such_db.t"));
+	check("unknown database code", 81, $ch->errno);
+	check("connection alive after errors", 1, value($ch, "1"));
+
+	echo "--- connection errors\n";
+
+	$bad = @new ClickHouse(CLICKHOUSE_HOST, CLICKHOUSE_USER, "wrong password", CLICKHOUSE_DATABASE, CLICKHOUSE_PORT);
+	check("query with wrong password", false, @$bad->query("SELECT 1"));
+	check("insert with wrong password", false, @$bad->insert("t", [[1]]));
+	$bad = @new ClickHouse(CLICKHOUSE_HOST, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DATABASE, 1);
+	check("query with wrong port", false, @$bad->query("SELECT 1"));
+	$bad = @new ClickHouse(CLICKHOUSE_HOST, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, "no_such_db", CLICKHOUSE_PORT);
+	check("query with unknown default database", false, @$bad->query("SELECT 1"));
 
 	echo "--- insert\n";
 
@@ -266,6 +283,11 @@
 		check("wrong tuple size", false, @$ch->insert($table, [["id" => 9, "tup" => [1]]]));
 		check("fixed string too long", false, @$ch->insert($table, [["id" => 10, "fx" => "abcde"]]));
 		check("empty values", false, @$ch->insert($table, []));
+		check("null into non-nullable", false, @$ch->insert($table, [["id" => null]]));
+		check("insert into unknown table", false, @$ch->insert("no_such_table", [["id" => 1]]));
+		check("insert unknown table code", 60, $ch->errno);
+		check("insert into unknown database", false, @$ch->insert("no_such_db.t", [["id" => 1]]));
+		check("insert unknown database code", 81, $ch->errno);
 		check("table still has 3 rows", 3, $ch->query("SELECT count() AS c FROM {$table}")->fetch_assoc()['c']);
 
 		$ch->query("DROP TABLE {$table}");
