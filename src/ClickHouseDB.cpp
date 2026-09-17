@@ -46,7 +46,7 @@ void ClickHouseDB::connect(const zend_string *host, const zend_string *username,
 		options.SetDefaultDatabase(DEFAULT_DBNAME);
 
 	if (port != 0)
-		options.SetPort(port);
+		options.SetPort(static_cast<uint16_t>(port));
 	else
 		options.SetPort(DEFAULT_PORT);
 
@@ -188,12 +188,13 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	insert_query.append(table_name);
 	insert_query.append(" (");
 
-	Bucket *first_row_column_bucket;
-	ZEND_HASH_FOREACH_BUCKET(Z_ARR_P(first_row), first_row_column_bucket)
+	zend_ulong column_index;
+	zend_string *column_key;
+	ZEND_HASH_FOREACH_KEY(Z_ARR_P(first_row), column_index, column_key)
 	{
 		zend_string *name;
 
-		bool is_numeric_key = (first_row_column_bucket->key == nullptr);
+		bool is_numeric_key = (column_key == nullptr);
 		if (value_found && is_numeric_key != numeric_keys)
 		{
 			zend_error(E_WARNING, "Mixing numeric and string field names is not allowed");
@@ -203,18 +204,18 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 
 		if (is_numeric_key)
 		{
-			if (first_row_column_bucket->h >= fields_data.size())
+			if (column_index >= fields_data.size())
 			{
-				zend_error(E_WARNING, "Field name is not provided for column %lu at row 0", first_row_column_bucket->h);
+				zend_error(E_WARNING, "Field name is not provided for column %lu at row 0", column_index);
 				zend_array_destroy(Z_ARR(column_names));
 				return false;
 			}
 
-			name = fields_data[first_row_column_bucket->h];
+			name = fields_data[column_index];
 		}
 		else
 		{
-			name = first_row_column_bucket->key;
+			name = column_key;
 
 			if (!ClickHouseDB::set_column_index(Z_ARR(column_names), name))
 			{
@@ -294,36 +295,40 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 
 auto ClickHouseDB::fill_columns(const zend_array *values, const vector<ColumnRef> &columns, const zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool
 {
-	Bucket *row_bucket;
-	ZEND_HASH_FOREACH_BUCKET(values, row_bucket)
+	zend_ulong row_index;
+	zend_string *row_key;
+	zval *row;
+	ZEND_HASH_FOREACH_KEY_VAL(values, row_index, row_key, row)
 	{
-		if (row_bucket->key != nullptr)
+		if (row_key != nullptr)
 		{
-			zend_error(E_WARNING, "Values key must be number but got string '%s'", ZSTR_VAL(row_bucket->key));
+			zend_error(E_WARNING, "Values key must be number but got string '%s'", ZSTR_VAL(row_key));
 			return false;
 		}
 
-		if (Z_TYPE(row_bucket->val) != IS_ARRAY)
+		if (Z_TYPE_P(row) != IS_ARRAY)
 		{
-			zend_error(E_WARNING, "Values must be array but got type %d", Z_TYPE(row_bucket->val));
+			zend_error(E_WARNING, "Values must be array but got type %d", Z_TYPE_P(row));
 			return false;
 		}
 
-		if (zend_hash_num_elements(Z_ARR(row_bucket->val)) != columns.size())
+		if (zend_hash_num_elements(Z_ARR_P(row)) != columns.size())
 		{
-			zend_error(E_WARNING, "Row %lu has %u columns but %lu expected", row_bucket->h, zend_hash_num_elements(Z_ARR(row_bucket->val)), columns.size());
+			zend_error(E_WARNING, "Row %lu has %u columns but %lu expected", row_index, zend_hash_num_elements(Z_ARR_P(row)), columns.size());
 			return false;
 		}
 
 		rows++;
 
-		Bucket *column_bucket;
-		ZEND_HASH_FOREACH_BUCKET(Z_ARR(row_bucket->val), column_bucket)
+		zend_ulong column_index;
+		zend_string *column_key;
+		zval *column_value;
+		ZEND_HASH_FOREACH_KEY_VAL(Z_ARR_P(row), column_index, column_key, column_value)
 		{
 			zend_string *name;
 			zend_ulong index;
 
-			bool is_numeric_key = (column_bucket->key == nullptr);
+			bool is_numeric_key = (column_key == nullptr);
 			if (is_numeric_key != numeric_keys)
 			{
 				zend_error(E_WARNING, "Mixing numeric and string field names is not allowed");
@@ -332,19 +337,19 @@ auto ClickHouseDB::fill_columns(const zend_array *values, const vector<ColumnRef
 
 			if (is_numeric_key)
 			{
-				if (column_bucket->h >= fields_data.size())
+				if (column_index >= fields_data.size())
 				{
-					zend_error(E_WARNING, "Field name is not provided for column %lu at row %lu", column_bucket->h, row_bucket->h);
+					zend_error(E_WARNING, "Field name is not provided for column %lu at row %lu", column_index, row_index);
 					return false;
 				}
 
-				index = column_bucket->h;
+				index = column_index;
 
 				name = fields_data[index];
 			}
 			else
 			{
-				name = column_bucket->key;
+				name = column_key;
 
 				zval *index_val = zend_hash_find(column_names, name);
 				if (index_val == nullptr)
@@ -356,7 +361,7 @@ auto ClickHouseDB::fill_columns(const zend_array *values, const vector<ColumnRef
 				index = Z_LVAL_P(index_val);
 			}
 
-			if (!append_value(columns[index], &column_bucket->val, name))
+			if (!append_value(columns[index], column_value, name))
 				return false;
 		}
 		ZEND_HASH_FOREACH_END();
@@ -457,10 +462,10 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				timestamp = Z_LVAL_P(value) * (24 * 60 * 60);
 			else if (php_type == IS_STRING)
 			{
-				std::optional<time_t> parsed = parse_timestamp(Z_STRVAL_P(value), DATE_FORMAT, false, nullptr);
+				std::optional<time_t> parsed = parse_date(Z_STRVAL_P(value));
 				if (!parsed)
 				{
-					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(value), DATE_FORMAT);
+					zend_error(E_WARNING, "Failed to parse date '%s' for column '%s'", Z_STRVAL_P(value), ZSTR_VAL(name));
 					return false;
 				}
 
@@ -482,10 +487,10 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				timestamp = Z_LVAL_P(value);
 			else if (php_type == IS_STRING)
 			{
-				std::optional<time_t> parsed = parse_timestamp(Z_STRVAL_P(value), DATETIME_FORMAT, true, nullptr);
+				std::optional<time_t> parsed = parse_datetime(Z_STRVAL_P(value));
 				if (!parsed)
 				{
-					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(value), DATETIME_FORMAT);
+					zend_error(E_WARNING, "Failed to parse datetime '%s' for column '%s'", Z_STRVAL_P(value), ZSTR_VAL(name));
 					return false;
 				}
 
@@ -509,33 +514,15 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				ticks = static_cast<int64_t>(std::llround(Z_DVAL_P(value) * static_cast<double>(scale)));
 			else if (php_type == IS_STRING)
 			{
-				const char *rest = nullptr;
-				std::optional<time_t> parsed = parse_timestamp(Z_STRVAL_P(value), DATETIME_FORMAT, true, &rest);
-				if (!parsed)
+				std::optional<time_t> seconds = parse_datetime(Z_STRVAL_P(value));
+				if (!seconds)
 				{
-					zend_error(E_WARNING, "Failed to parse date '%s' from format '%s'", Z_STRVAL_P(value), DATETIME_FORMAT);
+					zend_error(E_WARNING, "Failed to parse datetime '%s' for column '%s'", Z_STRVAL_P(value), ZSTR_VAL(name));
 					return false;
 				}
 
-				ticks = *parsed * scale;
-
-				if (rest != nullptr && *rest == '.')
-				{
-					int64_t fraction = 0;
-					size_t digits = 0;
-
-					for (const char *c = rest + 1; *c >= '0' && *c <= '9'; c++)
-					{
-						if (digits < datetime->GetPrecision())
-							fraction = fraction * 10 + (*c - '0');
-						digits++;
-					}
-
-					for (size_t i = digits; i < datetime->GetPrecision(); i++)
-						fraction *= 10;
-
-					ticks += fraction;
-				}
+				const char *colon = strrchr(Z_STRVAL_P(value), ':');
+				ticks = *seconds * scale + parse_fraction(colon != nullptr ? strchr(colon, '.') : nullptr, datetime->GetPrecision());
 			}
 			else
 				return type_mismatch(name, "datetime string, timestamp or float seconds");
@@ -543,6 +530,46 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			datetime->Append(ticks);
 			return true;
 		}
+		case Type::Code::Time:
+		case Type::Code::Time64:
+		{
+			size_t precision = type == Type::Code::Time64 ? column->As<ColumnTime64>()->GetPrecision() : 0;
+			int64_t scale = pow10_int64(precision);
+			int64_t ticks;
+
+			if (php_type == IS_LONG)
+				ticks = Z_LVAL_P(value) * scale;
+			else if (php_type == IS_DOUBLE)
+				ticks = static_cast<int64_t>(std::llround(Z_DVAL_P(value) * static_cast<double>(scale)));
+			else if (php_type == IS_STRING)
+			{
+				std::optional<int64_t> parsed = parse_time(Z_STRVAL_P(value), precision);
+				if (!parsed)
+				{
+					zend_error(E_WARNING, "Failed to parse time '%s' for column '%s'", Z_STRVAL_P(value), ZSTR_VAL(name));
+					return false;
+				}
+
+				ticks = *parsed;
+			}
+			else
+				return type_mismatch(name, "time string or seconds");
+
+			if (type == Type::Code::Time)
+				column->As<ColumnTime>()->Append(static_cast<int32_t>(ticks));
+			else
+				column->As<ColumnTime64>()->Append(ticks);
+			return true;
+		}
+		case Type::Code::Bool:
+			if (php_type == IS_TRUE || php_type == IS_FALSE)
+				column->As<ColumnBool>()->Append(php_type == IS_TRUE);
+			else if (php_type == IS_LONG)
+				column->As<ColumnBool>()->Append(Z_LVAL_P(value) != 0);
+			else
+				return type_mismatch(name, "bool");
+
+			return true;
 		case Type::Code::Nullable:
 		{
 			auto nullable = column->As<ColumnNullable>();
@@ -705,7 +732,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 
 			if (php_type == IS_LONG)
 			{
-				column->As<ColumnIPv4>()->Append(static_cast<uint32_t>(Z_LVAL_P(value)));
+				column->As<ColumnIPv4>()->Append(htonl(static_cast<uint32_t>(Z_LVAL_P(value))));
 				return true;
 			}
 
@@ -804,6 +831,15 @@ auto ClickHouseDB::append_default(const ColumnRef &column, const zend_string *na
 			return true;
 		case Type::Code::DateTime64:
 			column->As<ColumnDateTime64>()->Append(0);
+			return true;
+		case Type::Code::Time:
+			column->As<ColumnTime>()->Append(0);
+			return true;
+		case Type::Code::Time64:
+			column->As<ColumnTime64>()->Append(0);
+			return true;
+		case Type::Code::Bool:
+			column->As<ColumnBool>()->Append(false);
 			return true;
 		case Type::Code::Nullable:
 		{
@@ -921,18 +957,69 @@ auto ClickHouseDB::append_map(const ColumnRef &column, const zend_array *pairs, 
 	return true;
 }
 
-auto ClickHouseDB::parse_timestamp(const char *text, const char *format, bool local, const char **rest) -> std::optional<time_t>
+auto ClickHouseDB::parse_date(const char *text) -> std::optional<time_t>
 {
 	tm tm_time{};
 
-	const char *end = strptime(text, format, &tm_time);
-	if (end == nullptr)
+	if (strptime(text, DATE_FORMAT, &tm_time) == nullptr)
 		return std::nullopt;
 
-	if (rest != nullptr)
-		*rest = end;
+	return timegm(&tm_time);
+}
 
-	return local ? mktime(&tm_time) : timegm(&tm_time);
+auto ClickHouseDB::parse_datetime(const char *text) -> std::optional<time_t>
+{
+	zval date;
+	php_date_instantiate(php_date_get_date_ce(), &date);
+
+	php_date_obj *date_object = Z_PHPDATE_P(&date);
+	std::optional<time_t> timestamp;
+
+	if (php_date_initialize(date_object, text, strlen(text), nullptr, nullptr, 0))
+		timestamp = static_cast<time_t>(date_object->time->sse);
+
+	zval_ptr_dtor(&date);
+	return timestamp;
+}
+
+auto ClickHouseDB::parse_fraction(const char *text, size_t precision) -> int64_t
+{
+	if (text == nullptr || *text != '.')
+		return 0;
+
+	int64_t fraction = 0;
+	size_t digits = 0;
+
+	for (const char *c = text + 1; *c >= '0' && *c <= '9'; c++)
+	{
+		if (digits < precision)
+			fraction = fraction * 10 + (*c - '0');
+		digits++;
+	}
+
+	for (size_t i = digits; i < precision; i++)
+		fraction *= 10;
+
+	return fraction;
+}
+
+auto ClickHouseDB::parse_time(const char *text, size_t precision) -> std::optional<int64_t>
+{
+	bool negative = *text == '-';
+	if (negative)
+		text++;
+
+	int hours = 0;
+	int minutes = 0;
+	int seconds = 0;
+	int consumed = 0;
+
+	if (sscanf(text, "%d:%d:%d%n", &hours, &minutes, &seconds, &consumed) != 3)
+		return std::nullopt;
+
+	int64_t ticks = (hours * 3600LL + minutes * 60 + seconds) * pow10_int64(precision) + parse_fraction(text + consumed, precision);
+
+	return negative ? -ticks : ticks;
 }
 
 auto ClickHouseDB::type_mismatch(const zend_string *name, const char *expected) -> bool
@@ -983,36 +1070,38 @@ auto ClickHouseDB::parse_fields(const zend_array *fields, vector<zend_string *> 
 
 	unordered_set<string> uniques;
 
-	Bucket *bucket;
-	ZEND_HASH_FOREACH_BUCKET(fields, bucket)
+	zend_ulong index;
+	zend_string *key;
+	zval *field;
+	ZEND_HASH_FOREACH_KEY_VAL(fields, index, key, field)
 	{
-		if (bucket->key != nullptr)
+		if (key != nullptr)
 		{
-			zend_error(E_WARNING, "Field key must be number but got string '%s'", ZSTR_VAL(bucket->key));
+			zend_error(E_WARNING, "Field key must be number but got string '%s'", ZSTR_VAL(key));
 			return false;
 		}
 
-		if (Z_TYPE(bucket->val) != IS_STRING)
+		if (Z_TYPE_P(field) != IS_STRING)
 		{
-			zend_error(E_WARNING, "Field must be string but got type %d", Z_TYPE(bucket->val));
+			zend_error(E_WARNING, "Field must be string but got type %d", Z_TYPE_P(field));
 			return false;
 		}
 
-		if (bucket->h != data.size())
+		if (index != data.size())
 		{
-			zend_error(E_WARNING, "Field keys must go continuously in ascending order, key %lu received but %lu expected", bucket->h, data.size());
+			zend_error(E_WARNING, "Field keys must go continuously in ascending order, key %lu received but %lu expected", index, data.size());
 			return false;
 		}
 
 		// ReSharper disable once CppTooWideScopeInitStatement
-		auto [iter, success] = uniques.insert(string(Z_STRVAL(bucket->val), Z_STRLEN(bucket->val)));
+		auto [iter, success] = uniques.insert(string(Z_STRVAL_P(field), Z_STRLEN_P(field)));
 		if (!success)
 		{
-			zend_error(E_WARNING, "Field name '%s' listed twice", Z_STRVAL(bucket->val));
+			zend_error(E_WARNING, "Field name '%s' listed twice", Z_STRVAL_P(field));
 			return false;
 		}
 
-		data.push_back(Z_STR(bucket->val));
+		data.push_back(Z_STR_P(field));
 	}
 	ZEND_HASH_FOREACH_END();
 

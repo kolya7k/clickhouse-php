@@ -36,7 +36,10 @@ private:
 	[[nodiscard]] static auto append_default(const ColumnRef &column, const zend_string *name) -> bool;
 	[[nodiscard]] static auto append_map(const ColumnRef &column, const zend_array *pairs, const zend_string *name) -> bool;
 
-	[[nodiscard]] static auto parse_timestamp(const char *text, const char *format, bool local, const char **rest) -> std::optional<time_t>;
+	[[nodiscard]] static auto parse_date(const char *text) -> std::optional<time_t>;
+	[[nodiscard]] static auto parse_datetime(const char *text) -> std::optional<time_t>;
+	[[nodiscard]] static auto parse_fraction(const char *text, size_t precision) -> int64_t;
+	[[nodiscard]] static auto parse_time(const char *text, size_t precision) -> std::optional<int64_t>;
 
 	template<class T, class V>
 	[[nodiscard]] static auto append_integer(const ColumnRef &column, zval *value, const zend_string *name) -> bool;

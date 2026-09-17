@@ -12,14 +12,19 @@ if test "$CLICKHOUSE" != "no"; then
 	PHP_ADD_LIBRARY(lz4, 1, CLICKHOUSE_SHARED_LIBADD)
 	PHP_ADD_LIBRARY(zstd, 1, CLICKHOUSE_SHARED_LIBADD)
 
- 	CXXFLAGS="-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -std=gnu++2a -Wall -Wextra -Wdeprecated -Wno-deprecated-declarations -Wno-unused-parameter -Wredundant-decls -Wlogical-op -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wdouble-promotion -Wno-unknown-pragmas -Wcast-qual -fno-omit-frame-pointer -include src/defines.h"
-	LDFLAGS="-fPIC -mno-sse4.2 -mno-sse4.1 -O2 -g3 -Wl,--export-dynamic -fno-omit-frame-pointer"
+	system_includes="-isystem $phpincludedir -isystem $phpincludedir/main -isystem $phpincludedir/TSRM -isystem $phpincludedir/Zend -isystem $phpincludedir/ext -isystem $phpincludedir/ext/date/lib -isystem PHP_EXT_SRCDIR()/clickhouse-cpp -isystem PHP_EXT_SRCDIR()/clickhouse-cpp/clickhouse/cityhash"
 
-	sources="src/clickhouse.cpp \
+	CXXFLAGS="-fPIC -march=native -m64 -pipe -O2 -g3 -fno-omit-frame-pointer -std=gnu++2a $system_includes"
+	LDFLAGS="-fPIC -O2 -g3 -fno-omit-frame-pointer -Wl,--export-dynamic -Wl,-z,relro -Wl,-z,now -Wl,--warn-common"
+
+	extension_flags="-include src/defines.h -Wall -Wextra -Werror -Wdeprecated -Wconversion -Wredundant-decls -Wfloat-equal -Wcast-qual -Wdouble-promotion -Wmissing-include-dirs -Wundef -Wuninitialized -Wzero-as-null-pointer-constant -Wnon-virtual-dtor -Woverloaded-virtual -pedantic -pedantic-errors -Wconditionally-supported -Wcast-align=strict -Wlogical-op -Wuseless-cast -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wno-unknown-pragmas -Wformat=2 -Wduplicated-branches -Wimplicit-fallthrough=5 -Warray-bounds=2 -Wstrict-overflow=2 -Wuse-after-free=3 -Wbidi-chars=any -Wdangling-reference -Wno-unused-parameter"
+
+	extension_sources="src/clickhouse.cpp \
 		src/util.cpp \
 		src/ClickHouseDB.cpp \
-		src/ClickHouseResult.cpp \
-		clickhouse-cpp/clickhouse/block.cpp \
+		src/ClickHouseResult.cpp"
+
+	library_sources="clickhouse-cpp/clickhouse/block.cpp \
 		clickhouse-cpp/clickhouse/client.cpp \
 		clickhouse-cpp/clickhouse/query.cpp \
 		clickhouse-cpp/clickhouse/base/compressed.cpp \
@@ -56,8 +61,8 @@ if test "$CLICKHOUSE" != "no"; then
 		clickhouse-cpp/clickhouse/cityhash/city.cc"
 
 	PHP_ADD_INCLUDE(PHP_EXT_SRCDIR()/src)
-	PHP_ADD_INCLUDE(PHP_EXT_SRCDIR()/clickhouse-cpp)
-	PHP_ADD_INCLUDE(PHP_EXT_SRCDIR()/clickhouse-cpp/clickhouse/cityhash)
 
-	PHP_NEW_EXTENSION(clickhouse, $sources, $ext_shared,, -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1)
+	PHP_NEW_EXTENSION(clickhouse, $extension_sources, $ext_shared, , $extension_flags -DZEND_ENABLE_STATIC_TSRMLS_CACHE=1, cxx)
+
+	PHP_ADD_SOURCES_X(PHP_EXT_DIR(clickhouse), $library_sources, -w, shared_objects_clickhouse, yes)
 fi

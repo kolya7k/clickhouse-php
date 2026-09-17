@@ -62,6 +62,7 @@ private:
 
 	static void set_date_value(zval *value, time_t timestamp, bool with_time);
 	static void set_datetime64_value(zval *value, int64_t ticks, size_t precision);
+	static void set_time_value(zval *value, int64_t ticks, size_t precision);
 	static void set_decimal_value(zval *value, Int128 number, size_t scale);
 	static void set_ipv4_value(zval *value, in_addr address);
 	static void set_ipv6_value(zval *value, const in6_addr &address);

@@ -25,10 +25,16 @@ namespace
 
 }
 
-#define Z_CLICKHOUSE(zv) ((ClickHouseObject*)((char*)(zv) - XtOffsetOf(ClickHouseObject, std)))
+template<class T>
+static auto object_from(zend_object *obj) -> T*
+{
+	return static_cast<T*>(static_cast<void*>(reinterpret_cast<char*>(obj) - XtOffsetOf(T, std)));
+}
+
+#define Z_CLICKHOUSE(zv) object_from<ClickHouseObject>(zv)
 #define Z_CLICKHOUSE_P(zv) Z_CLICKHOUSE(Z_OBJ_P(zv))
 
-#define Z_CLICKHOUSE_RESULT(zv) ((ClickHouseResultObject*)((char*)(zv) - XtOffsetOf(ClickHouseResultObject, std)))
+#define Z_CLICKHOUSE_RESULT(zv) object_from<ClickHouseResultObject>(zv)
 #define Z_CLICKHOUSE_RESULT_P(zv) Z_CLICKHOUSE_RESULT(Z_OBJ_P(zv))
 
 __inline static auto clickhouse_new(zend_class_entry *ce) -> zend_object*

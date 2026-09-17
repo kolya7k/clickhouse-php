@@ -5,6 +5,10 @@
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 #pragma GCC diagnostic ignored "-Wredundant-decls"
 #include <php.h>
+extern "C"
+{
+#include <ext/date/php_date.h>
+}
 #pragma GCC diagnostic pop
 
 extern zend_module_entry clickhouse_module_entry;

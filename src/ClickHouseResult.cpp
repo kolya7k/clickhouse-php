@@ -18,7 +18,7 @@ auto ClickHouseResult::fetch(zval *row, FetchType type) -> bool
 	size_t columns = block.GetColumnCount();
 	size_t rows = block.GetRowCount();
 
-	array_init_size(row, type == FetchType::BOTH ? columns * 2 : columns);
+	array_init_size(row, static_cast<uint32_t>(type == FetchType::BOTH ? columns * 2 : columns));
 
 	for (size_t i = 0; i < columns; i++)
 	{
@@ -149,6 +149,19 @@ auto ClickHouseResult::to_zval(zval *value, const ColumnRef &column, size_t inde
 			break;
 		case Type::Code::Date32:
 			set_date<ColumnDate32>(value, column, index);
+			break;
+		case Type::Code::Time:
+			set_time_value(value, column->As<ColumnTime>()->At(index), 0);
+			break;
+		case Type::Code::Time64:
+		{
+			auto time = column->As<ColumnTime64>();
+
+			set_time_value(value, time->At(index), time->GetPrecision());
+			break;
+		}
+		case Type::Code::Bool:
+			ZVAL_BOOL(value, column->As<ColumnBool>()->At(index));
 			break;
 		case Type::Code::Nullable:
 		{
@@ -285,6 +298,15 @@ auto ClickHouseResult::item_to_zval(zval *value, const ItemView &item, const Typ
 		case Type::Code::DateTime64:
 			set_datetime64_value(value, item.get<int64_t>(), item_type->As<DateTime64Type>()->GetPrecision());
 			break;
+		case Type::Code::Time:
+			set_time_value(value, item.get<int32_t>(), 0);
+			break;
+		case Type::Code::Time64:
+			set_time_value(value, item.get<int64_t>(), item_type->As<Time64Type>()->GetPrecision());
+			break;
+		case Type::Code::Bool:
+			ZVAL_BOOL(value, item.get<uint8_t>() != 0);
+			break;
 		case Type::Code::Decimal:
 		case Type::Code::Decimal32:
 		case Type::Code::Decimal64:
@@ -351,7 +373,7 @@ auto ClickHouseResult::set_array(zval *value, const ColumnRef &elements) -> bool
 {
 	size_t size = elements->Size();
 
-	array_init_size(value, size);
+	array_init_size(value, static_cast<uint32_t>(size));
 
 	for (size_t i = 0; i < size; i++)
 	{
@@ -374,7 +396,7 @@ auto ClickHouseResult::set_tuple(zval *value, const ColumnRef &column, size_t in
 	auto tuple = column->As<ColumnTuple>();
 	size_t size = tuple->TupleSize();
 
-	array_init_size(value, size);
+	array_init_size(value, static_cast<uint32_t>(size));
 
 	for (size_t i = 0; i < size; i++)
 	{
@@ -397,7 +419,7 @@ auto ClickHouseResult::set_map(zval *value, const ColumnRef &column, size_t inde
 	auto pairs = column->As<ColumnMap>()->GetAsColumn(index)->As<ColumnTuple>();
 	size_t size = pairs->Size();
 
-	array_init_size(value, size);
+	array_init_size(value, static_cast<uint32_t>(size));
 
 	for (size_t i = 0; i < size; i++)
 	{
@@ -434,15 +456,10 @@ auto ClickHouseResult::set_map(zval *value, const ColumnRef &column, size_t inde
 
 void ClickHouseResult::set_date_value(zval *value, time_t timestamp, bool with_time)
 {
-	tm tm_time{};
-	localtime_r(&timestamp, &tm_time);
-
-	char buffer[20];		// 2020-01-01 00:00:00 + \0
-	size_t written = strftime(buffer, sizeof(buffer), with_time ? DATETIME_FORMAT : DATE_FORMAT, &tm_time);
-	if (written == 0)
-		zend_error_noreturn(E_ERROR, "Failed to format DateTime to string");
-
-	ZVAL_STRINGL(value, buffer, written);
+	if (with_time)
+		ZVAL_STR(value, php_format_date(PHP_DATETIME_FORMAT, sizeof(PHP_DATETIME_FORMAT) - 1, timestamp, true));
+	else
+		ZVAL_STR(value, php_format_date(PHP_DATE_FORMAT, sizeof(PHP_DATE_FORMAT) - 1, timestamp, false));
 }
 
 void ClickHouseResult::set_datetime64_value(zval *value, int64_t ticks, size_t precision)
@@ -457,19 +474,36 @@ void ClickHouseResult::set_datetime64_value(zval *value, int64_t ticks, size_t p
 		seconds--;
 	}
 
-	tm tm_time{};
-	time_t timestamp = seconds;
-	localtime_r(&timestamp, &tm_time);
+	zend_string *text = php_format_date(PHP_DATETIME_FORMAT, sizeof(PHP_DATETIME_FORMAT) - 1, seconds, true);
 
-	char buffer[32];		// 2020-01-01 00:00:00.123456789 + \0
-	size_t written = strftime(buffer, sizeof(buffer), DATETIME_FORMAT, &tm_time);
-	if (written == 0)
-		zend_error_noreturn(E_ERROR, "Failed to format DateTime64 to string");
+	if (precision == 0)
+	{
+		ZVAL_STR(value, text);
+		return;
+	}
+
+	char buffer[16];
+	int written = snprintf(buffer, sizeof(buffer), ".%0*" PRId64, static_cast<int>(precision), fraction);
+
+	ZVAL_STR(value, zend_string_concat2(ZSTR_VAL(text), ZSTR_LEN(text), buffer, static_cast<size_t>(written)));
+	zend_string_release(text);
+}
+
+void ClickHouseResult::set_time_value(zval *value, int64_t ticks, size_t precision)
+{
+	int64_t scale = pow10_int64(precision);
+	bool negative = ticks < 0;
+	int64_t magnitude = negative ? -ticks : ticks;
+	int64_t seconds = magnitude / scale;
+	int64_t fraction = magnitude % scale;
+
+	char buffer[40];
+	int written = snprintf(buffer, sizeof(buffer), "%s%02" PRId64 ":%02" PRId64 ":%02" PRId64, negative ? "-" : "", seconds / 3600, seconds / 60 % 60, seconds % 60);
 
 	if (precision > 0)
-		written += snprintf(buffer + written, sizeof(buffer) - written, ".%0*" PRId64, static_cast<int>(precision), fraction);
+		written += snprintf(buffer + written, sizeof(buffer) - static_cast<size_t>(written), ".%0*" PRId64, static_cast<int>(precision), fraction);
 
-	ZVAL_STRINGL(value, buffer, written);
+	ZVAL_STRINGL(value, buffer, static_cast<size_t>(written));
 }
 
 void ClickHouseResult::set_decimal_value(zval *value, Int128 number, size_t scale)

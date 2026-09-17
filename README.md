@@ -28,12 +28,14 @@ $ make install
 
 ## Supported types
 * Int8, Int16, Int32, Int64, Int128
-* UInt8, UInt16, UInt32, UInt64, UInt128, Bool (read as int)
+* UInt8, UInt16, UInt32, UInt64, UInt128
+* Bool (PHP bool)
 * Float32, Float64
 * String, FixedString<N>
-* Date, Date32, DateTime, DateTime64 (strings in the local time of the PHP host, like mysqli)
+* Date, Date32, DateTime, DateTime64 (strings in the local time of the PHP host, like mysqli; on insert any `strtotime` format, a Unix timestamp, or float seconds for DateTime64)
+* Time, Time64 (strings like `12:34:56.789`, hours are not wrapped, negative values keep the sign)
 * Decimal, Decimal32, Decimal64, Decimal128 (strings)
-* UUID, IPv4, IPv6 (strings)
+* UUID, IPv4, IPv6 (strings; IPv4 also accepts an `ip2long` integer on insert)
 * Enum8, Enum16 (names)
 * Nullable<T>
 * LowCardinality<T> for String, FixedString and Nullable of them (clickhouse-cpp does not support numeric LowCardinality)
