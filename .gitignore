@@ -1,6 +1,8 @@
 syntax: glob
 secret.inc.php
 .env.local
+.env.local.defaults
+remote_build.sh
 build
 .idea/workspace.xml
 .idea/deployment.xml
