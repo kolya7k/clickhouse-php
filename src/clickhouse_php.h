@@ -12,7 +12,7 @@ extern "C"
 #pragma GCC diagnostic pop
 
 extern zend_module_entry clickhouse_module_entry;
-#define phpext_clickhouse_ptr &clickhouse_module_entry
+#define PHPEXT_CLICKHOUSE_PTR &clickhouse_module_entry
 
 inline zend_class_entry *clickhouse_class_entry = nullptr;
 inline zend_class_entry *clickhouse_result_class_entry = nullptr;

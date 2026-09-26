@@ -159,7 +159,7 @@ void ClickHouseResult::set_geo(zval *value, const T &data)
 template<class V>
 void ClickHouseResult::set_long_value(zval *value, V number)
 {
-	bool overflow;
+	bool overflow = false;
 
 	if constexpr (std::is_same_v<V, UInt128>)
 		overflow = number > UInt128(PHP_INT_MAX);

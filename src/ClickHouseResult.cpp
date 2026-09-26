@@ -13,7 +13,7 @@ auto ClickHouseResult::fetch(zval *row, FetchType type) -> bool
 	if (this->blocks.empty())
 		return false;
 
-	Block &block = this->blocks.front();
+	const Block &block = this->blocks.front();
 
 	size_t columns = block.GetColumnCount();
 	size_t rows = block.GetRowCount();

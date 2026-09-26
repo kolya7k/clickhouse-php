@@ -171,7 +171,7 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	if (!ClickHouseDB::parse_fields(fields, fields_data))
 		return false;
 
-	zval *first_row = zend_hash_index_find(values, 0);
+	const zval *first_row = zend_hash_index_find(values, 0);
 	if (first_row == nullptr)
 	{
 		zend_error(E_WARNING, "Values must be simple array with rows starting from index 0");
@@ -188,11 +188,11 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 	insert_query.append(table_name);
 	insert_query.append(" (");
 
-	zend_ulong column_index;
-	zend_string *column_key;
+	zend_ulong column_index = 0;
+	zend_string *column_key = nullptr;
 	ZEND_HASH_FOREACH_KEY(Z_ARR_P(first_row), column_index, column_key)
 	{
-		zend_string *name;
+		zend_string *name = nullptr;
 
 		bool is_numeric_key = (column_key == nullptr);
 		if (value_found && is_numeric_key != numeric_keys)
@@ -295,9 +295,9 @@ auto ClickHouseDB::do_insert(const string &table_name, zend_array *values, zend_
 
 auto ClickHouseDB::fill_columns(const zend_array *values, const vector<ColumnRef> &columns, const zend_array *column_names, const vector<zend_string*> &fields_data, bool numeric_keys, zend_long &rows) -> bool
 {
-	zend_ulong row_index;
-	zend_string *row_key;
-	zval *row;
+	zend_ulong row_index = 0;
+	zend_string *row_key = nullptr;
+	zval *row = nullptr;
 	ZEND_HASH_FOREACH_KEY_VAL(values, row_index, row_key, row)
 	{
 		if (row_key != nullptr)
@@ -320,13 +320,13 @@ auto ClickHouseDB::fill_columns(const zend_array *values, const vector<ColumnRef
 
 		rows++;
 
-		zend_ulong column_index;
-		zend_string *column_key;
-		zval *column_value;
+		zend_ulong column_index = 0;
+		zend_string *column_key = nullptr;
+		zval *column_value = nullptr;
 		ZEND_HASH_FOREACH_KEY_VAL(Z_ARR_P(row), column_index, column_key, column_value)
 		{
-			zend_string *name;
-			zend_ulong index;
+			zend_string *name = nullptr;
+			zend_ulong index = 0;
 
 			bool is_numeric_key = (column_key == nullptr);
 			if (is_numeric_key != numeric_keys)
@@ -351,7 +351,7 @@ auto ClickHouseDB::fill_columns(const zend_array *values, const vector<ColumnRef
 			{
 				name = column_key;
 
-				zval *index_val = zend_hash_find(column_names, name);
+				const zval *index_val = zend_hash_find(column_names, name);
 				if (index_val == nullptr)
 				{
 					zend_error(E_WARNING, "Unexpected column '%s', columns must be the same for each row", ZSTR_VAL(name));
@@ -419,7 +419,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 		case Type::Code::Float32:
 		case Type::Code::Float64:
 		{
-			double number;
+			double number = 0;
 			if (php_type == IS_DOUBLE)
 				number = Z_DVAL_P(value);
 			else if (php_type == IS_LONG)
@@ -506,7 +506,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 		{
 			auto datetime = column->As<ColumnDateTime64>();
 			int64_t scale = pow10_int64(datetime->GetPrecision());
-			int64_t ticks;
+			int64_t ticks = 0;
 
 			if (php_type == IS_LONG)
 				ticks = Z_LVAL_P(value) * scale;
@@ -535,7 +535,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 		{
 			size_t precision = type == Type::Code::Time64 ? column->As<ColumnTime64>()->GetPrecision() : 0;
 			int64_t scale = pow10_int64(precision);
-			int64_t ticks;
+			int64_t ticks = 0;
 
 			if (php_type == IS_LONG)
 				ticks = Z_LVAL_P(value) * scale;
@@ -608,7 +608,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 
 			ColumnRef elements = CreateColumnByType(column->Type()->As<ArrayType>()->GetItemType()->GetName());
 
-			zval *element;
+			zval *element = nullptr;
 			ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), element)
 			{
 				if (!append_value(elements, element, name))
@@ -632,7 +632,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			}
 
 			size_t i = 0;
-			zval *element;
+			zval *element = nullptr;
 			ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), element)
 			{
 				if (!append_value(tuple->At(i++), element, name))
@@ -934,9 +934,9 @@ auto ClickHouseDB::append_map(const ColumnRef &column, const zend_array *pairs, 
 	ColumnRef keys = CreateColumnByType(map_type->GetKeyType()->GetName());
 	ColumnRef items = CreateColumnByType(map_type->GetValueType()->GetName());
 
-	zend_string *key_string;
-	zend_ulong key_index;
-	zval *item;
+	zend_string *key_string = nullptr;
+	zend_ulong key_index = 0;
+	zval *item = nullptr;
 	ZEND_HASH_FOREACH_KEY_VAL(pairs, key_index, key_string, item)
 	{
 		zval key;
@@ -1070,9 +1070,9 @@ auto ClickHouseDB::parse_fields(const zend_array *fields, vector<zend_string *> 
 
 	unordered_set<string> uniques;
 
-	zend_ulong index;
-	zend_string *key;
-	zval *field;
+	zend_ulong index = 0;
+	zend_string *key = nullptr;
+	zval *field = nullptr;
 	ZEND_HASH_FOREACH_KEY_VAL(fields, index, key, field)
 	{
 		if (key != nullptr)
@@ -1117,7 +1117,7 @@ auto ClickHouseDB::parse_fields(const zend_array *fields, vector<zend_string *> 
 auto ClickHouseDB::set_column_index(zend_array *names, zend_string *name) -> bool
 {
 	// ReSharper disable once CppTooWideScopeInitStatement
-	zval *index_val = zend_hash_find(names, name);
+	const zval *index_val = zend_hash_find(names, name);
 	if (index_val != nullptr)
 		return false;
 

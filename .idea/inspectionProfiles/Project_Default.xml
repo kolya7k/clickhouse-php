@@ -2,14 +2,168 @@
   <profile version="1.0">
     <option name="myName" value="Project Default" />
     <inspection_tool class="ClangTidy" enabled="true" level="WARNING" enabled_by_default="true">
-      <option name="clangTidyChecks" value="-*,mpi-*,bugprone-*,-bugprone-switch-missing-default-case,-bugprone-signal-handler,-bugprone-suspicious-realloc-usage,-bugprone-casting-through-void,-bugprone-exception-escape,-bugprone-multiple-new-in-one-expression,-bugprone-unchecked-optional-access,-bugprone-shared-ptr-array-mismatch,-bugprone-implicit-widening-of-multiplication-result,-bugprone-incorrect-enable-shared-from-this,-bugprone-misleading-setter-of-reference,-bugprone-bitwise-pointer-cast,-bugprone-inc-dec-in-conditions,-bugprone-assignment-in-if-condition,-bugprone-incorrect-enable-if,-bugprone-unhandled-exception-at-new,-bugprone-crtp-constructor-accessibility,-bugprone-optional-value-conversion,-bugprone-compare-pointer-to-member-virtual-function,-bugprone-capturing-this-in-member-variable,-bugprone-multi-level-implicit-pointer-conversion,-bugprone-unsafe-functions,-bugprone-easily-swappable-parameters,-bugprone-non-zero-enum-to-bool-conversion,-bugprone-standalone-empty,-bugprone-stringview-nullptr,-bugprone-narrowing-conversions,-bugprone-suspicious-memory-comparison,-bugprone-chained-comparison,-bugprone-redundant-branch-condition,-bugprone-tagged-union-member-count,-bugprone-suspicious-stringview-data-usage,-bugprone-signed-char-misuse,-bugprone-nondeterministic-pointer-iteration-order,-bugprone-unintended-char-ostream-output,-bugprone-signed-bitwise,-bugprone-bool-pointer-implicit-conversion,-bugprone-empty-catch,-bugprone-infinite-loop,-bugprone-pointer-arithmetic-on-polymorphic-object,-bugprone-unused-local-non-trivial-variable,-bugprone-unique-ptr-array-mismatch,-bugprone-return-const-ref-from-parameter,cert-err52-cpp,cert-err60-cpp,cert-err34-c,cert-str34-c,cert-msc50-cpp,cert-msc51-cpp,cert-dcl58-cpp,cert-flp30-c,cppcoreguidelines-pro-type-member-init,cppcoreguidelines-slicing,cppcoreguidelines-interfaces-global-init,cppcoreguidelines-pro-type-static-cast-downcast,cppcoreguidelines-narrowing-conversions,google-default-arguments,google-runtime-operator,google-explicit-constructor,hicpp-multiway-paths-covered,hicpp-exception-baseclass,misc-unconventional-assign-operator,misc-misplaced-const,misc-new-delete-overloads,misc-non-copyable-objects,misc-throw-by-value-catch-by-reference,misc-uniqueptr-reset-release,modernize-*,-modernize-use-std-format,-modernize-use-using,-modernize-use-default-member-init,-modernize-use-ranges,-modernize-use-auto,-modernize-use-starts-ends-with,-modernize-use-designated-initializers,-modernize-use-trailing-return-type,-modernize-avoid-c-arrays,-modernize-use-constraints,-modernize-min-max-use-initializer-list,-modernize-use-std-numbers,-modernize-type-traits,-modernize-use-std-print,-modernize-use-integer-sign-comparison,-modernize-macro-to-enum,openmp-use-default-none,performance-*,-performance-noexcept-swap,-performance-noexcept-destructor,-performance-enum-size,-performance-no-int-to-ptr,-performance-avoid-endl,portability-simd-intrinsics,readability-avoid-const-params-in-decls,readability-redundant-smartptr-get,readability-make-member-function-const,readability-string-compare,readability-delete-null-pointer,readability-static-accessed-through-instance,readability-convert-member-functions-to-static,readability-redundant-function-ptr-dereference,readability-const-return-type,readability-misleading-indentation,readability-non-const-parameter,readability-redundant-string-cstr,readability-use-anyofallof,readability-simplify-subscript-expr,readability-uniqueptr-delete-release,readability-static-definition-in-anonymous-namespace,readability-redundant-declaration,readability-redundant-string-init,readability-redundant-control-flow,readability-misplaced-array-index,readability-inconsistent-declaration-parameter-name,readability-container-size-empty" />
+      <option name="clangTidyCheckOptions">
+        <list>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.NamespaceCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ClassCase" />
+            <option name="optionValue" value="CamelCase" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ClassIgnoredRegexp" />
+            <option name="optionValue" value="(shared_lock|unique_lock|measure_scope|const_iterator|indexed_string)" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.StructCase" />
+            <option name="optionValue" value="CamelCase" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.StructIgnoredRegexp" />
+            <option name="optionValue" value="(shared_lock|unique_lock|measure_scope|const_iterator|indexed_string)" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.UnionCase" />
+            <option name="optionValue" value="CamelCase" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.EnumCase" />
+            <option name="optionValue" value="CamelCase" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ConceptCase" />
+            <option name="optionValue" value="CamelCase" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.TypeTemplateParameterCase" />
+            <option name="optionValue" value="CamelCase" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.EnumConstantCase" />
+            <option name="optionValue" value="UPPER_CASE" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ScopedEnumConstantCase" />
+            <option name="optionValue" value="UPPER_CASE" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.FunctionCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.FunctionIgnoredRegexp" />
+            <option name="optionValue" value="__.*" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.MethodCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.MethodIgnoredRegexp" />
+            <option name="optionValue" value="[A-Z]" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.VariableCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.VariableIgnoredRegexp" />
+            <option name="optionValue" value="_[a-z][a-z0-9_]*" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ParameterCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ParameterIgnoredRegexp" />
+            <option name="optionValue" value="_[a-z][a-z0-9_]*" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ConstantParameterCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ConstantParameterIgnoredRegexp" />
+            <option name="optionValue" value="_[a-z][a-z0-9_]*" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.MemberCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.MemberIgnoredRegexp" />
+            <option name="optionValue" value="[A-Z]" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.GlobalVariableCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.LocalConstantCase" />
+            <option name="optionValue" value="lower_case" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.LocalConstantIgnoredRegexp" />
+            <option name="optionValue" value="_[a-z][a-z0-9_]*" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.ClassConstantCase" />
+            <option name="optionValue" value="UPPER_CASE" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.StaticConstantCase" />
+            <option name="optionValue" value="UPPER_CASE" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.GlobalConstantCase" />
+            <option name="optionValue" value="UPPER_CASE" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="readability-identifier-naming.MacroDefinitionCase" />
+            <option name="optionValue" value="UPPER_CASE" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="misc-include-cleaner.MissingIncludes" />
+            <option name="optionValue" value="false" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="misc-const-correctness.AnalyzeValues" />
+            <option name="optionValue" value="false" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="misc-const-correctness.TransformPointersAsPointers" />
+            <option name="optionValue" value="false" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="misc-const-correctness.TransformReferences" />
+            <option name="optionValue" value="false" />
+          </ClangTidyCheckOption>
+          <ClangTidyCheckOption>
+            <option name="optionName" value="bugprone-dangling-handle.HandleClasses" />
+            <option name="optionValue" value="std::basic_string_view;std::span;std::ranges::subrange;std::ranges::ref_view;std::ranges::owning_view;std::ranges::filter_view;std::ranges::transform_view;std::ranges::take_view;std::ranges::drop_view" />
+          </ClangTidyCheckOption>
+        </list>
+      </option>
+      <option name="clangTidyChecks" value="-*,google-default-arguments,google-runtime-operator,boost-use-to-string,mpi-buffer-deref,mpi-type-mismatch,openmp-use-default-none,altera-kernel-name-restriction,altera-single-work-item-barrier,concurrency-mt-unsafe,objc-assert-equals,hicpp-*,-hicpp-special-member-functions,-hicpp-named-parameter,-hicpp-braces-around-statements,-hicpp-explicit-conversions,-hicpp-use-auto,-hicpp-function-size,-hicpp-signed-bitwise,abseil-*,misc-*,-misc-explicit-constructor,-misc-multiple-inheritance,-misc-non-private-member-variables-in-classes,clang-analyzer-*,-clang-analyzer-optin.core.EnumCastOutOfRange,modernize-*,portability-*,-portability-avoid-pragma-once,performance-*,-performance-enum-size,bugprone-*,-bugprone-signed-bitwise,-bugprone-throwing-static-initialization,-bugprone-easily-swappable-parameters,readability-*,-readability-named-parameter,-readability-identifier-length,-readability-trailing-comma,-readability-magic-numbers,-readability-math-missing-parentheses,-readability-inconsistent-ifelse-braces,-readability-braces-around-statements,-readability-isolate-declaration,-readability-function-cognitive-complexity,-readability-enum-initial-value,cert-*,-cert-int09-c,-cert-err58-cpp,cppcoreguidelines-*,-cppcoreguidelines-explicit-constructor,-cppcoreguidelines-avoid-non-const-global-variables,-cppcoreguidelines-non-private-member-variables-in-classes,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-reinterpret-cast,-cppcoreguidelines-pro-type-union-access,-cppcoreguidelines-pro-bounds-constant-array-index,-cppcoreguidelines-avoid-do-while,-cppcoreguidelines-special-member-functions,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-bounds-avoid-unchecked-container-access" />
+      <option name="preferClangTidyFilesOverIDESettings" value="false" />
     </inspection_tool>
-    <inspection_tool class="CppLocalVariableMayBeConst" enabled="false" level="HINT" enabled_by_default="false" />
-    <inspection_tool class="CppParameterMayBeConst" enabled="false" level="HINT" enabled_by_default="false" />
+    <inspection_tool class="Clazy" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppLocalVariableMayBeConst" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppNonExplicitConversionOperator" enabled="false" level="HINT" enabled_by_default="false" />
+    <inspection_tool class="CppParameterMayBeConst" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="CppRedundantAccessSpecifier" enabled="false" level="HINT" enabled_by_default="false" />
+    <inspection_tool class="CppTooWideScopeInitStatement" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="DanglingPointers" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="GrazieInspection" enabled="false" level="GRAMMAR_ERROR" enabled_by_default="false" />
+    <inspection_tool class="HttpUrlsUsage" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="NullDereferences" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="SpellCheckingInspection" enabled="false" level="TYPO" enabled_by_default="false">
       <option name="processCode" value="true" />
       <option name="processLiterals" value="true" />
       <option name="processComments" value="true" />
     </inspection_tool>
+    <inspection_tool class="SqlNoDataSourceInspection" enabled="false" level="WARNING" enabled_by_default="false" />
   </profile>
 </component>

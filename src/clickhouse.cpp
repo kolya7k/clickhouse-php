@@ -75,7 +75,7 @@ ZEND_MODULE_GLOBALS_CTOR_D(clickhouse)
 ZEND_MODULE_GLOBALS_DTOR_D(clickhouse)
 {}
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_construct, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_CONSTRUCT, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, host, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, username, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, passwd, IS_STRING, 0)
@@ -106,7 +106,7 @@ PHP_METHOD(ClickHouseObject, __construct)
 }
 
 // ReSharper disable once CppVariableCanBeMadeConstexpr
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_destruct, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_DESTRUCT, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseObject, __destruct)
@@ -117,15 +117,15 @@ PHP_METHOD(ClickHouseObject, __destruct)
 	ch->impl = nullptr;
 }
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_query, 0, 0, 1)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_QUERY, 0, 0, 1)
 	ZEND_ARG_TYPE_INFO(0, query, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, resultmode, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseObject, query)
 {
-	zend_string *query;
-	zend_long resultmode;
+	zend_string *query = nullptr;
+	zend_long resultmode = 0;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_STR(query)
@@ -151,7 +151,7 @@ PHP_METHOD(ClickHouseObject, query)
 	RETVAL_OBJ(result);
 }
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_insert, 0, 0, 2)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_INSERT, 0, 0, 2)
 	ZEND_ARG_TYPE_INFO(0, table_name, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, values, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, fields, IS_ARRAY, 0)
@@ -159,8 +159,8 @@ ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseObject, insert)
 {
-	zend_string *table_name;
-	zend_array *values;
+	zend_string *table_name = nullptr;
+	zend_array *values = nullptr;
 	zend_array *fields = nullptr;
 
 	ZEND_PARSE_PARAMETERS_START(2, 3)
@@ -180,7 +180,7 @@ PHP_METHOD(ClickHouseObject, insert)
 }
 
 // ReSharper disable once CppVariableCanBeMadeConstexpr
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_destruct, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_RESULT_DESTRUCT, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseResultObject, __destruct)
@@ -192,7 +192,7 @@ PHP_METHOD(ClickHouseResultObject, __destruct)
 }
 
 // ReSharper disable once CppVariableCanBeMadeConstexpr
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_assoc, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_RESULT_FETCH_ASSOC, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseResultObject, fetch_assoc)
@@ -205,7 +205,7 @@ PHP_METHOD(ClickHouseResultObject, fetch_assoc)
 }
 
 // ReSharper disable once CppVariableCanBeMadeConstexpr
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_row, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_RESULT_FETCH_ROW, 0, 0, 0)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(ClickHouseResultObject, fetch_row)
@@ -218,7 +218,7 @@ PHP_METHOD(ClickHouseResultObject, fetch_row)
 }
 
 // ReSharper disable once CppVariableCanBeMadeConstexpr
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_array, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_RESULT_FETCH_ARRAY, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, resulttype, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
@@ -241,7 +241,7 @@ PHP_METHOD(ClickHouseResultObject, fetch_array)
 }
 
 // ReSharper disable once CppVariableCanBeMadeConstexpr
-ZEND_BEGIN_ARG_INFO_EX(arginfo_clickhouse_result_fetch_all, 0, 0, 0)
+ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_RESULT_FETCH_ALL, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, resulttype, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
@@ -262,24 +262,24 @@ PHP_METHOD(ClickHouseResultObject, fetch_all)
 	obj->impl->fetch_all(return_value, type);
 }
 
-static constexpr zend_function_entry extension_functions[] = {
+static constexpr zend_function_entry EXTENSION_FUNCTIONS[] = {
 	PHP_FE_END
 };
 
-static const zend_function_entry clickhouse_functions[] = {
-	PHP_ME(ClickHouseObject, __construct, arginfo_clickhouse_construct, ZEND_ACC_PUBLIC)
-	PHP_ME(ClickHouseObject, __destruct, arginfo_clickhouse_destruct, ZEND_ACC_PUBLIC)
-	PHP_ME(ClickHouseObject, query, arginfo_clickhouse_query, ZEND_ACC_PUBLIC)
-	PHP_ME(ClickHouseObject, insert, arginfo_clickhouse_insert, ZEND_ACC_PUBLIC)
+static const zend_function_entry CLICKHOUSE_FUNCTIONS[] = {
+	PHP_ME(ClickHouseObject, __construct, ARGINFO_CLICKHOUSE_CONSTRUCT, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseObject, __destruct, ARGINFO_CLICKHOUSE_DESTRUCT, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseObject, query, ARGINFO_CLICKHOUSE_QUERY, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseObject, insert, ARGINFO_CLICKHOUSE_INSERT, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
-static const zend_function_entry clickhouse_result_functions[] = {
-	PHP_ME(ClickHouseResultObject, __destruct, arginfo_clickhouse_result_destruct, ZEND_ACC_PUBLIC)
-	PHP_ME(ClickHouseResultObject, fetch_assoc, arginfo_clickhouse_result_fetch_assoc, ZEND_ACC_PUBLIC)
-	PHP_ME(ClickHouseResultObject, fetch_row, arginfo_clickhouse_result_fetch_row, ZEND_ACC_PUBLIC)
-	PHP_ME(ClickHouseResultObject, fetch_array, arginfo_clickhouse_result_fetch_array, ZEND_ACC_PUBLIC)
-	PHP_ME(ClickHouseResultObject, fetch_all, arginfo_clickhouse_result_fetch_all, ZEND_ACC_PUBLIC)
+static const zend_function_entry CLICKHOUSE_RESULT_FUNCTIONS[] = {
+	PHP_ME(ClickHouseResultObject, __destruct, ARGINFO_CLICKHOUSE_RESULT_DESTRUCT, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseResultObject, fetch_assoc, ARGINFO_CLICKHOUSE_RESULT_FETCH_ASSOC, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseResultObject, fetch_row, ARGINFO_CLICKHOUSE_RESULT_FETCH_ROW, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseResultObject, fetch_array, ARGINFO_CLICKHOUSE_RESULT_FETCH_ARRAY, ZEND_ACC_PUBLIC)
+	PHP_ME(ClickHouseResultObject, fetch_all, ARGINFO_CLICKHOUSE_RESULT_FETCH_ALL, ZEND_ACC_PUBLIC)
 	PHP_FE_END
 };
 
@@ -287,7 +287,7 @@ PHP_MINIT_FUNCTION(clickhouse)
 {
 	// ClickHouse
 	zend_class_entry ce;
-	INIT_CLASS_ENTRY(ce, "ClickHouse", clickhouse_functions)
+	INIT_CLASS_ENTRY(ce, "ClickHouse", CLICKHOUSE_FUNCTIONS)
 	clickhouse_class_entry = zend_register_internal_class(&ce);
 	clickhouse_class_entry->create_object = clickhouse_new;
 
@@ -306,7 +306,7 @@ PHP_MINIT_FUNCTION(clickhouse)
 
 	// ClickHouseResult
 	zend_class_entry rce;
-	INIT_CLASS_ENTRY(rce, "ClickHouseResult", clickhouse_result_functions)
+	INIT_CLASS_ENTRY(rce, "ClickHouseResult", CLICKHOUSE_RESULT_FUNCTIONS)
 	clickhouse_result_class_entry = zend_register_internal_class(&rce);
 
 	memcpy(&clickhouse_object_result_handlers, &std_object_handlers, sizeof(zend_object_handlers));
@@ -339,7 +339,7 @@ typedef void (*zend_ctor_type)(void*);
 zend_module_entry clickhouse_module_entry = {
 	STANDARD_MODULE_HEADER,
 	"clickhouse",							/* Extension name */
-	extension_functions,							/* zend_function_entry */
+	EXTENSION_FUNCTIONS,							/* zend_function_entry */
 	PHP_MINIT(clickhouse),					/* PHP_MINIT - Module initialization */
 	nullptr,						/* PHP_MSHUTDOWN - Module shutdown */
 	PHP_RINIT(clickhouse),					/* PHP_RINIT - Request initialization */

@@ -110,7 +110,7 @@ auto ClickHouseDB::php_to_geo(zval *value, T &out, const zend_string *name) -> b
 		double coordinates[2] = {0., 0.};
 		size_t i = 0;
 
-		zval *coordinate;
+		zval *coordinate = nullptr;
 		ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), coordinate)
 		{
 			if (Z_TYPE_P(coordinate) == IS_DOUBLE)
@@ -129,7 +129,7 @@ auto ClickHouseDB::php_to_geo(zval *value, T &out, const zend_string *name) -> b
 	}
 	else
 	{
-		zval *element;
+		zval *element = nullptr;
 		ZEND_HASH_FOREACH_VAL(Z_ARR_P(value), element)
 		{
 			typename T::value_type item;
