@@ -17,7 +17,21 @@ if test "$CLICKHOUSE" != "no"; then
 	CXXFLAGS="-fPIC -march=native -m64 -pipe -O2 -g3 -fno-omit-frame-pointer -std=gnu++2a $system_includes"
 	LDFLAGS="-fPIC -O2 -g3 -fno-omit-frame-pointer -Wl,--export-dynamic -Wl,-z,relro -Wl,-z,now -Wl,--warn-common"
 
-	extension_flags="-include src/defines.h -Wall -Wextra -Werror -Wdeprecated -Wconversion -Wredundant-decls -Wfloat-equal -Wcast-qual -Wdouble-promotion -Wmissing-include-dirs -Wundef -Wuninitialized -Wzero-as-null-pointer-constant -Wnon-virtual-dtor -Woverloaded-virtual -pedantic -pedantic-errors -Wconditionally-supported -Wcast-align=strict -Wlogical-op -Wuseless-cast -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wno-unknown-pragmas -Wformat=2 -Wduplicated-branches -Wimplicit-fallthrough=5 -Warray-bounds=2 -Wstrict-overflow=2 -Wuse-after-free=3 -Wbidi-chars=any -Wdangling-reference -Wno-unused-parameter"
+	AC_LANG_PUSH([C++])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[
+#ifndef __clang__
+#error
+#endif
+	]])], [cxx_is_clang=yes], [cxx_is_clang=no])
+	AC_LANG_POP([C++])
+
+	extension_flags="-include src/defines.h -Wall -Wextra -Werror -Wdeprecated -Wconversion -Wredundant-decls -Wfloat-equal -Wcast-qual -Wdouble-promotion -Wmissing-include-dirs -Wundef -Wuninitialized -Wzero-as-null-pointer-constant -Wnon-virtual-dtor -Woverloaded-virtual -pedantic -pedantic-errors -Wno-unused-parameter"
+
+	if test "$cxx_is_clang" = "yes"; then
+		extension_flags="$extension_flags -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-sign-conversion -Wno-padded -Wno-global-constructors -Wno-reserved-identifier -Wno-exit-time-destructors -Wno-newline-eof -Wno-switch-enum -Wno-old-style-cast -Wno-cast-align -Wno-disabled-macro-expansion -Wno-unused-macros -Wno-class-varargs -Wno-format-nonliteral -Wno-shadow-field-in-constructor -Wno-ctad-maybe-unsupported -Wno-switch-default -Wno-missing-braces -Wno-unsafe-buffer-usage -Wno-nrvo -Wno-date-time -Wno-missing-prototypes -Wno-lifetime-safety-suggestions -Wno-lifetime-safety-invalidation"
+	else
+		extension_flags="$extension_flags -Wconditionally-supported -Wcast-align=strict -Wlogical-op -Wuseless-cast -Wtrampolines -Wduplicated-cond -Wsuggest-override -Wno-unknown-pragmas -Wformat=2 -Wnull-dereference -Wduplicated-branches -Wimplicit-fallthrough=5 -Warray-bounds=2 -Wstrict-overflow=2 -Wuse-after-free=3 -Wbidi-chars=any -Wdangling-reference"
+	fi
 
 	extension_sources="src/clickhouse.cpp \
 		src/util.cpp \

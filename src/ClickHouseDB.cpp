@@ -4,6 +4,8 @@
 
 #include "clickhouse/columns/factory.h"
 
+using clickhouse::CreateColumnByType;
+
 __inline static auto clickhouse_result_new(deque<Block> blocks, zend_long rows_count) -> zend_object *
 {
 	auto obj = static_cast<ClickHouseResultObject*>(zend_object_alloc(sizeof(ClickHouseResultObject), clickhouse_result_class_entry));
@@ -428,23 +430,23 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				return type_mismatch(name, "float");
 
 			if (type == Type::Code::Float32)
-				column->As<ColumnFloat32>()->Append(static_cast<float>(number));
+				column->AsStrict<ColumnFloat32>()->Append(static_cast<float>(number));
 			else
-				column->As<ColumnFloat64>()->Append(number);
+				column->AsStrict<ColumnFloat64>()->Append(number);
 			return true;
 		}
 		case Type::Code::String:
 			if (php_type != IS_STRING)
 				return type_mismatch(name, "string");
 
-			column->As<ColumnString>()->Append(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+			column->AsStrict<ColumnString>()->Append(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
 			return true;
 		case Type::Code::FixedString:
 		{
 			if (php_type != IS_STRING)
 				return type_mismatch(name, "string");
 
-			auto fixed = column->As<ColumnFixedString>();
+			auto fixed = column->AsStrict<ColumnFixedString>();
 			if (fixed->FixedSize() < Z_STRLEN_P(value))
 			{
 				zend_error(E_WARNING, "FixedString column '%s' max size %lu < value size %lu", ZSTR_VAL(name), fixed->FixedSize(), Z_STRLEN_P(value));
@@ -475,9 +477,9 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				return type_mismatch(name, "date string or days number");
 
 			if (type == Type::Code::Date)
-				column->As<ColumnDate>()->Append(timestamp);
+				column->AsStrict<ColumnDate>()->Append(timestamp);
 			else
-				column->As<ColumnDate32>()->Append(timestamp);
+				column->AsStrict<ColumnDate32>()->Append(timestamp);
 			return true;
 		}
 		case Type::Code::DateTime:
@@ -499,12 +501,12 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			else
 				return type_mismatch(name, "datetime string or timestamp");
 
-			column->As<ColumnDateTime>()->Append(timestamp);
+			column->AsStrict<ColumnDateTime>()->Append(timestamp);
 			return true;
 		}
 		case Type::Code::DateTime64:
 		{
-			auto datetime = column->As<ColumnDateTime64>();
+			auto datetime = column->AsStrict<ColumnDateTime64>();
 			int64_t scale = pow10_int64(datetime->GetPrecision());
 			int64_t ticks = 0;
 
@@ -533,7 +535,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 		case Type::Code::Time:
 		case Type::Code::Time64:
 		{
-			size_t precision = type == Type::Code::Time64 ? column->As<ColumnTime64>()->GetPrecision() : 0;
+			size_t precision = type == Type::Code::Time64 ? column->AsStrict<ColumnTime64>()->GetPrecision() : 0;
 			int64_t scale = pow10_int64(precision);
 			int64_t ticks = 0;
 
@@ -556,23 +558,23 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				return type_mismatch(name, "time string or seconds");
 
 			if (type == Type::Code::Time)
-				column->As<ColumnTime>()->Append(static_cast<int32_t>(ticks));
+				column->AsStrict<ColumnTime>()->Append(static_cast<int32_t>(ticks));
 			else
-				column->As<ColumnTime64>()->Append(ticks);
+				column->AsStrict<ColumnTime64>()->Append(ticks);
 			return true;
 		}
 		case Type::Code::Bool:
 			if (php_type == IS_TRUE || php_type == IS_FALSE)
-				column->As<ColumnBool>()->Append(php_type == IS_TRUE);
+				column->AsStrict<ColumnBool>()->Append(php_type == IS_TRUE);
 			else if (php_type == IS_LONG)
-				column->As<ColumnBool>()->Append(Z_LVAL_P(value) != 0);
+				column->AsStrict<ColumnBool>()->Append(Z_LVAL_P(value) != 0);
 			else
 				return type_mismatch(name, "bool");
 
 			return true;
 		case Type::Code::Nullable:
 		{
-			auto nullable = column->As<ColumnNullable>();
+			auto nullable = column->AsStrict<ColumnNullable>();
 
 			nullable->Append(php_type == IS_NULL);
 
@@ -616,7 +618,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			}
 			ZEND_HASH_FOREACH_END();
 
-			column->As<ColumnArray>()->AppendAsColumn(elements);
+			column->AsStrict<ColumnArray>()->AppendAsColumn(elements);
 			return true;
 		}
 		case Type::Code::Tuple:
@@ -624,7 +626,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			if (php_type != IS_ARRAY)
 				return type_mismatch(name, "array");
 
-			auto tuple = column->As<ColumnTuple>();
+			auto tuple = column->AsStrict<ColumnTuple>();
 			if (zend_hash_num_elements(Z_ARR_P(value)) != tuple->TupleSize())
 			{
 				zend_error(E_WARNING, "Tuple column '%s' has %lu elements but %u given", ZSTR_VAL(name), tuple->TupleSize(), zend_hash_num_elements(Z_ARR_P(value)));
@@ -653,7 +655,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			if (!php_to_geo(value, point, name))
 				return false;
 
-			column->As<ColumnPoint>()->Append(point);
+			column->AsStrict<ColumnPoint>()->Append(point);
 			return true;
 		}
 		case Type::Code::Ring:
@@ -662,7 +664,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			if (!php_to_geo(value, ring, name))
 				return false;
 
-			column->As<ColumnRing>()->Append(ring);
+			column->AsStrict<ColumnRing>()->Append(ring);
 			return true;
 		}
 		case Type::Code::Polygon:
@@ -671,7 +673,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			if (!php_to_geo(value, polygon, name))
 				return false;
 
-			column->As<ColumnPolygon>()->Append(polygon);
+			column->AsStrict<ColumnPolygon>()->Append(polygon);
 			return true;
 		}
 		case Type::Code::MultiPolygon:
@@ -680,7 +682,7 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			if (!php_to_geo(value, multi_polygon, name))
 				return false;
 
-			column->As<ColumnMultiPolygon>()->Append(multi_polygon);
+			column->AsStrict<ColumnMultiPolygon>()->Append(multi_polygon);
 			return true;
 		}
 		case Type::Code::Enum8:
@@ -691,18 +693,18 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				string enum_name(Z_STRVAL_P(value), Z_STRLEN_P(value));
 
 				if (type == Type::Code::Enum8)
-					column->As<ColumnEnum8>()->Append(enum_name);
+					column->AsStrict<ColumnEnum8>()->Append(enum_name);
 				else
-					column->As<ColumnEnum16>()->Append(enum_name);
+					column->AsStrict<ColumnEnum16>()->Append(enum_name);
 				return true;
 			}
 
 			if (php_type == IS_LONG)
 			{
 				if (type == Type::Code::Enum8)
-					column->As<ColumnEnum8>()->Append(static_cast<int8_t>(Z_LVAL_P(value)), true);
+					column->AsStrict<ColumnEnum8>()->Append(static_cast<int8_t>(Z_LVAL_P(value)), true);
 				else
-					column->As<ColumnEnum16>()->Append(static_cast<int16_t>(Z_LVAL_P(value)), true);
+					column->AsStrict<ColumnEnum16>()->Append(static_cast<int16_t>(Z_LVAL_P(value)), true);
 				return true;
 			}
 
@@ -720,19 +722,19 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 				return false;
 			}
 
-			column->As<ColumnUUID>()->Append(*uuid);
+			column->AsStrict<ColumnUUID>()->Append(*uuid);
 			return true;
 		}
 		case Type::Code::IPv4:
 			if (php_type == IS_STRING)
 			{
-				column->As<ColumnIPv4>()->Append(string(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+				column->AsStrict<ColumnIPv4>()->Append(string(Z_STRVAL_P(value), Z_STRLEN_P(value)));
 				return true;
 			}
 
 			if (php_type == IS_LONG)
 			{
-				column->As<ColumnIPv4>()->Append(htonl(static_cast<uint32_t>(Z_LVAL_P(value))));
+				column->AsStrict<ColumnIPv4>()->Append(htonl(static_cast<uint32_t>(Z_LVAL_P(value))));
 				return true;
 			}
 
@@ -741,14 +743,14 @@ auto ClickHouseDB::append_value(const ColumnRef &column, zval *value, const zend
 			if (php_type != IS_STRING)
 				return type_mismatch(name, "ip string");
 
-			column->As<ColumnIPv6>()->Append(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
+			column->AsStrict<ColumnIPv6>()->Append(string_view(Z_STRVAL_P(value), Z_STRLEN_P(value)));
 			return true;
 		case Type::Code::Decimal:
 		case Type::Code::Decimal32:
 		case Type::Code::Decimal64:
 		case Type::Code::Decimal128:
 		{
-			auto decimal = column->As<ColumnDecimal>();
+			auto decimal = column->AsStrict<ColumnDecimal>();
 
 			if (php_type == IS_STRING)
 				decimal->Append(string(Z_STRVAL_P(value), Z_STRLEN_P(value)));
@@ -779,71 +781,71 @@ auto ClickHouseDB::append_default(const ColumnRef &column, const zend_string *na
 	switch (type)
 	{
 		case Type::Code::Int8:
-			column->As<ColumnInt8>()->Append(0);
+			column->AsStrict<ColumnInt8>()->Append(0);
 			return true;
 		case Type::Code::Int16:
-			column->As<ColumnInt16>()->Append(0);
+			column->AsStrict<ColumnInt16>()->Append(0);
 			return true;
 		case Type::Code::Int32:
-			column->As<ColumnInt32>()->Append(0);
+			column->AsStrict<ColumnInt32>()->Append(0);
 			return true;
 		case Type::Code::Int64:
-			column->As<ColumnInt64>()->Append(0);
+			column->AsStrict<ColumnInt64>()->Append(0);
 			return true;
 		case Type::Code::Int128:
-			column->As<ColumnInt128>()->Append(Int128(0));
+			column->AsStrict<ColumnInt128>()->Append(Int128(0));
 			return true;
 		case Type::Code::UInt8:
-			column->As<ColumnUInt8>()->Append(0);
+			column->AsStrict<ColumnUInt8>()->Append(0);
 			return true;
 		case Type::Code::UInt16:
-			column->As<ColumnUInt16>()->Append(0);
+			column->AsStrict<ColumnUInt16>()->Append(0);
 			return true;
 		case Type::Code::UInt32:
-			column->As<ColumnUInt32>()->Append(0);
+			column->AsStrict<ColumnUInt32>()->Append(0);
 			return true;
 		case Type::Code::UInt64:
-			column->As<ColumnUInt64>()->Append(0);
+			column->AsStrict<ColumnUInt64>()->Append(0);
 			return true;
 		case Type::Code::UInt128:
-			column->As<ColumnUInt128>()->Append(UInt128(0));
+			column->AsStrict<ColumnUInt128>()->Append(UInt128(0));
 			return true;
 		case Type::Code::Float32:
-			column->As<ColumnFloat32>()->Append(0.f);
+			column->AsStrict<ColumnFloat32>()->Append(0.f);
 			return true;
 		case Type::Code::Float64:
-			column->As<ColumnFloat64>()->Append(0.);
+			column->AsStrict<ColumnFloat64>()->Append(0.);
 			return true;
 		case Type::Code::String:
-			column->As<ColumnString>()->Append(string_view());
+			column->AsStrict<ColumnString>()->Append(string_view());
 			return true;
 		case Type::Code::FixedString:
-			column->As<ColumnFixedString>()->Append(string_view());
+			column->AsStrict<ColumnFixedString>()->Append(string_view());
 			return true;
 		case Type::Code::Date:
-			column->As<ColumnDate>()->Append(0);
+			column->AsStrict<ColumnDate>()->Append(0);
 			return true;
 		case Type::Code::Date32:
-			column->As<ColumnDate32>()->Append(0);
+			column->AsStrict<ColumnDate32>()->Append(0);
 			return true;
 		case Type::Code::DateTime:
-			column->As<ColumnDateTime>()->Append(0);
+			column->AsStrict<ColumnDateTime>()->Append(0);
 			return true;
 		case Type::Code::DateTime64:
-			column->As<ColumnDateTime64>()->Append(0);
+			column->AsStrict<ColumnDateTime64>()->Append(0);
 			return true;
 		case Type::Code::Time:
-			column->As<ColumnTime>()->Append(0);
+			column->AsStrict<ColumnTime>()->Append(0);
 			return true;
 		case Type::Code::Time64:
-			column->As<ColumnTime64>()->Append(0);
+			column->AsStrict<ColumnTime64>()->Append(0);
 			return true;
 		case Type::Code::Bool:
-			column->As<ColumnBool>()->Append(false);
+			column->AsStrict<ColumnBool>()->Append(false);
 			return true;
 		case Type::Code::Nullable:
 		{
-			auto nullable = column->As<ColumnNullable>();
+			auto nullable = column->AsStrict<ColumnNullable>();
 
 			nullable->Append(true);
 			return append_default(nullable->Nested(), name);
@@ -864,11 +866,11 @@ auto ClickHouseDB::append_default(const ColumnRef &column, const zend_string *na
 			zend_error(E_WARNING, "Nested %s is unsupported for column '%s'", column->Type()->GetName().c_str(), ZSTR_VAL(name));
 			return false;
 		case Type::Code::Array:
-			column->As<ColumnArray>()->AppendAsColumn(CreateColumnByType(column->Type()->As<ArrayType>()->GetItemType()->GetName()));
+			column->AsStrict<ColumnArray>()->AppendAsColumn(CreateColumnByType(column->Type()->As<ArrayType>()->GetItemType()->GetName()));
 			return true;
 		case Type::Code::Tuple:
 		{
-			auto tuple = column->As<ColumnTuple>();
+			auto tuple = column->AsStrict<ColumnTuple>();
 
 			for (size_t i = 0; i < tuple->TupleSize(); i++)
 			{
@@ -879,16 +881,16 @@ auto ClickHouseDB::append_default(const ColumnRef &column, const zend_string *na
 			return true;
 		}
 		case Type::Code::Point:
-			column->As<ColumnPoint>()->Append(std::make_tuple(0., 0.));
+			column->AsStrict<ColumnPoint>()->Append(std::make_tuple(0., 0.));
 			return true;
 		case Type::Code::Ring:
-			column->As<ColumnRing>()->Append(vector<std::tuple<double, double>>());
+			column->AsStrict<ColumnRing>()->Append(vector<std::tuple<double, double>>());
 			return true;
 		case Type::Code::Polygon:
-			column->As<ColumnPolygon>()->Append(vector<vector<std::tuple<double, double>>>());
+			column->AsStrict<ColumnPolygon>()->Append(vector<vector<std::tuple<double, double>>>());
 			return true;
 		case Type::Code::MultiPolygon:
-			column->As<ColumnMultiPolygon>()->Append(vector<vector<vector<std::tuple<double, double>>>>());
+			column->AsStrict<ColumnMultiPolygon>()->Append(vector<vector<vector<std::tuple<double, double>>>>());
 			return true;
 		case Type::Code::Map:
 		{
@@ -901,25 +903,25 @@ auto ClickHouseDB::append_default(const ColumnRef &column, const zend_string *na
 			return result;
 		}
 		case Type::Code::Enum8:
-			column->As<ColumnEnum8>()->Append(static_cast<int8_t>(column->Type()->As<EnumType>()->BeginValueToName()->first));
+			column->AsStrict<ColumnEnum8>()->Append(static_cast<int8_t>(column->Type()->As<EnumType>()->BeginValueToName()->first));
 			return true;
 		case Type::Code::Enum16:
-			column->As<ColumnEnum16>()->Append(column->Type()->As<EnumType>()->BeginValueToName()->first);
+			column->AsStrict<ColumnEnum16>()->Append(column->Type()->As<EnumType>()->BeginValueToName()->first);
 			return true;
 		case Type::Code::UUID:
-			column->As<ColumnUUID>()->Append(UUID{0, 0});
+			column->AsStrict<ColumnUUID>()->Append(UUID{0, 0});
 			return true;
 		case Type::Code::IPv4:
-			column->As<ColumnIPv4>()->Append(static_cast<uint32_t>(0));
+			column->AsStrict<ColumnIPv4>()->Append(static_cast<uint32_t>(0));
 			return true;
 		case Type::Code::IPv6:
-			column->As<ColumnIPv6>()->Append(in6addr_any);
+			column->AsStrict<ColumnIPv6>()->Append(in6addr_any);
 			return true;
 		case Type::Code::Decimal:
 		case Type::Code::Decimal32:
 		case Type::Code::Decimal64:
 		case Type::Code::Decimal128:
-			column->As<ColumnDecimal>()->Append(Int128(0));
+			column->AsStrict<ColumnDecimal>()->Append(Int128(0));
 			return true;
 		default:
 			zend_error(E_WARNING, "Type %s (%d) is unsupported for column '%s'", column->Type()->GetName().c_str(), type, ZSTR_VAL(name));
@@ -953,7 +955,7 @@ auto ClickHouseDB::append_map(const ColumnRef &column, const zend_array *pairs, 
 	auto row = make_shared<ColumnArray>(make_shared<ColumnTuple>(vector{keys->CloneEmpty(), items->CloneEmpty()}));
 	row->AppendAsColumn(make_shared<ColumnTuple>(vector{keys, items}));
 
-	column->As<ColumnMap>()->Append(make_shared<ColumnMap>(row));
+	column->AsStrict<ColumnMap>()->Append(make_shared<ColumnMap>(row));
 	return true;
 }
 

@@ -5,12 +5,7 @@
 #include "ClickHouseDB.h"
 #include "ClickHouseResult.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wignored-qualifiers"
-#pragma GCC diagnostic ignored "-Wfloat-equal"
-#pragma GCC diagnostic ignored "-Wredundant-decls"
 #include <ext/standard/info.h>
-#pragma GCC diagnostic pop
 
 static constexpr auto MODULE_VERSION = "1.1.0";
 
@@ -66,14 +61,6 @@ __inline static void clickhouse_free(zend_object *obj)
 	delete ch_obj->impl;
 	ch_obj->impl = nullptr;
 }
-
-ZEND_DECLARE_MODULE_GLOBALS(clickhouse)
-
-ZEND_MODULE_GLOBALS_CTOR_D(clickhouse)
-{}
-
-ZEND_MODULE_GLOBALS_DTOR_D(clickhouse)
-{}
 
 ZEND_BEGIN_ARG_INFO_EX(ARGINFO_CLICKHOUSE_CONSTRUCT, 0, 0, 0)
 	ZEND_ARG_TYPE_INFO(0, host, IS_STRING, 0)
@@ -334,8 +321,6 @@ PHP_MINFO_FUNCTION(clickhouse)
 	php_info_print_table_end();
 }
 
-typedef void (*zend_ctor_type)(void*);
-
 zend_module_entry clickhouse_module_entry = {
 	STANDARD_MODULE_HEADER,
 	"clickhouse",							/* Extension name */
@@ -346,11 +331,7 @@ zend_module_entry clickhouse_module_entry = {
 	nullptr,						/* PHP_RSHUTDOWN - Request shutdown */
 	PHP_MINFO(clickhouse),							/* PHP_MINFO - Module info */
 	MODULE_VERSION,								/* Version */
-	ZEND_MODULE_GLOBALS(clickhouse),
-	reinterpret_cast<zend_ctor_type>(ZEND_MODULE_GLOBALS_CTOR_N(clickhouse)),
-	reinterpret_cast<zend_ctor_type>(ZEND_MODULE_GLOBALS_DTOR_N(clickhouse)),
-	nullptr,
-	STANDARD_MODULE_PROPERTIES_EX
+	STANDARD_MODULE_PROPERTIES
 };
 
 #ifdef COMPILE_DL_CLICKHOUSE

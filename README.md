@@ -5,7 +5,7 @@ Written in C++ on top of [clickhouse-cpp](https://github.com/ClickHouse/clickhou
 
 ## Requirements
 * PHP 8.0+ (tested with 8.4)
-* GCC 10+ (C++20)
+* GCC 13+ or Clang (tested with 23), C++20
 * liblz4, libzstd
 * clickhouse-cpp as a git submodule, compiled into the extension together with its cityhash
 
@@ -21,8 +21,10 @@ $ make install
 ```
 
 Then add `extension=clickhouse.so` to `php.ini`. The module is compiled with `-march=native`, so build it on the host it will run on.
+To build with Clang, pass the compiler to configure: `./configure --enable-clickhouse CXX=clang++`.
 
 `CMakeLists.txt` is a wrapper for IDEs that speak CMake: the `clickhouse-php` target runs the same `phpize`, `configure` and `make` in `build/<type>/ext` and prints the module version, `install-clickhouse-php` runs `make install` there.
+`-DCLANG=ON` builds with `clang++`; `configure` is not rerun while `Makefile` is newer than `config.m4`, so use a separate build directory for Clang.
 
 ## API
 

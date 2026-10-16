@@ -589,6 +589,6 @@ auto ClickHouseResult::get_fetch_type(zend_long resulttype) -> FetchType
 			return type;
 	}
 
-	zend_error(E_WARNING, "Unknown fetch type %lu, CLICKHOUSE_ASSOC, CLICKHOUSE_NUM or CLICKHOUSE_BOTH are supported", resulttype);
+	zend_error(E_WARNING, "Unknown fetch type " ZEND_LONG_FMT ", CLICKHOUSE_ASSOC, CLICKHOUSE_NUM or CLICKHOUSE_BOTH are supported", resulttype);
 	return FetchType::BOTH;
 }

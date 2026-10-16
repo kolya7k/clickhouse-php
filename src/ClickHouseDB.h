@@ -64,13 +64,13 @@ auto ClickHouseDB::append_integer(const ColumnRef &column, zval *value, const ze
 	switch (Z_TYPE_P(value))
 	{
 		case IS_LONG:
-			column->As<T>()->Append(static_cast<V>(Z_LVAL_P(value)));
+			column->AsStrict<T>()->Append(static_cast<V>(Z_LVAL_P(value)));
 			return true;
 		case IS_TRUE:
-			column->As<T>()->Append(static_cast<V>(1));
+			column->AsStrict<T>()->Append(static_cast<V>(1));
 			return true;
 		case IS_FALSE:
-			column->As<T>()->Append(static_cast<V>(0));
+			column->AsStrict<T>()->Append(static_cast<V>(0));
 			return true;
 		case IS_STRING:
 			if constexpr (std::is_same_v<V, Int128> || std::is_same_v<V, UInt128>)
@@ -84,7 +84,7 @@ auto ClickHouseDB::append_integer(const ColumnRef &column, zval *value, const ze
 				if (!number)
 					return type_mismatch(name, "integer");
 
-				column->As<T>()->Append(*number);
+				column->AsStrict<T>()->Append(*number);
 				return true;
 			}
 			return type_mismatch(name, "integer");
